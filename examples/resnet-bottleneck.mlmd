@@ -1,0 +1,18 @@
+# ResNet Bottleneck block with skip connection
+# Input: 256x56x56
+
+[[ ResNet50 > Bottleneck ]]
+
+# Fork: main path and skip connection
+Input(shape=(256,56,56)) -> [main, skip]
+
+# Main path: 1x1 -> 3x3 -> 1x1 convolutions
+[main] -> Conv2d(filters=64, kernel=1) -> BatchNorm -> ReLU
+       -> Conv2d(filters=64, kernel=3, padding=1) -> BatchNorm -> ReLU
+       -> Conv2d(filters=256, kernel=1) -> BatchNorm -> [main_out]
+
+# Skip path: project to match dimensions
+[skip] -> Conv2d(filters=256, kernel=1) -> BatchNorm -> [skip_out]
+
+# Add residual and activate
+[main_out, skip_out] -> Add -> ReLU -> Output

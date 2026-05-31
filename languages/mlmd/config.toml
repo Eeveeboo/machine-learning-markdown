@@ -1,0 +1,6 @@
+name = "MLMD"
+grammar = "mlmd"
+path_suffixes = ["mlmd"]
+
+[language_servers]
+mlmd = { command = "mlmd", args = ["lsp"] }

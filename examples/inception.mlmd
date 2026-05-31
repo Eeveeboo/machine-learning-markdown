@@ -1,0 +1,26 @@
+# Inception module (GoogLeNet-style)
+# Four parallel branches concatenated along channel axis
+# Input: 192x28x28
+
+[[ Inception > Module ]]
+
+Input(shape=(192,28,28)) -> [b1, b2, b3, b4]
+
+# Branch 1: 1x1 conv
+[b1] -> Conv2d(filters=64, kernel=1) -> ReLU -> [out1]
+
+# Branch 2: 1x1 reduce -> 3x3 conv
+[b2] -> Conv2d(filters=96, kernel=1) -> ReLU
+     -> Conv2d(filters=128, kernel=3, padding=1) -> ReLU -> [out2]
+
+# Branch 3: 1x1 reduce -> 5x5 conv
+[b3] -> Conv2d(filters=16, kernel=1) -> ReLU
+     -> Conv2d(filters=32, kernel=5, padding=2) -> ReLU -> [out3]
+
+# Branch 4: maxpool -> 1x1 proj
+[b4] -> MaxPool(kernel=3, stride=1, padding=1)
+     -> Conv2d(filters=32, kernel=1) -> ReLU -> [out4]
+
+# Concatenate all branches along channel axis (axis=0 for C,H,W layout)
+# Output: (64+128+32+32)=256 channels, 28x28
+[out1, out2, out3, out4] -> Concat(axis=0) -> Output

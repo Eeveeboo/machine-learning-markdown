@@ -1,0 +1,19 @@
+# LeNet-5 architecture
+# Input: 1x28x28 (MNIST-style)
+
+[[ LeNet5 ]]
+
+Input(shape=(1,28,28))
+    -> Conv2d(filters=6, kernel=5)
+    -> ReLU
+    -> MaxPool(kernel=2, stride=2)
+    -> Conv2d(filters=16, kernel=5)
+    -> ReLU
+    -> MaxPool(kernel=2, stride=2)
+    -> Flatten
+    -> Linear(out_features=120)
+    -> ReLU
+    -> Linear(out_features=84)
+    -> ReLU
+    -> Linear(out_features=10)
+    -> Output

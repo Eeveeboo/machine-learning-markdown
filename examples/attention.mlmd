@@ -1,0 +1,19 @@
+# Single-head scaled dot-product attention
+# Q, K, V inputs: shape (512, 64) — seq_len=512, d_k=64
+
+[[ Attention > SingleHead ]]
+
+# Input projections
+Input(shape=(512,64)) -> [query]
+Input(shape=(512,64)) -> [key]
+Input(shape=(512,64)) -> [value]
+
+[query] -> Linear(out_features=64) -> [q_proj]
+[key]   -> Linear(out_features=64) -> [k_proj]
+[value] -> Linear(out_features=64) -> [v_proj]
+
+# Scaled dot-product: MatMul(Q, K) / sqrt(d_k)
+[q_proj, k_proj] -> MatMul -> Softmax -> [attn_weights]
+
+# Apply attention weights to values
+[attn_weights, v_proj] -> MatMul -> Linear(out_features=64) -> Output

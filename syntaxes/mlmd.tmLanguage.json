@@ -1,0 +1,101 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "MLMD",
+  "scopeName": "source.mlmd",
+  "fileTypes": ["mlmd"],
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#group" },
+    { "include": "#arrow_with_block" },
+    { "include": "#block_type_start" },
+    { "include": "#params" }
+  ],
+  "repository": {
+    "comment": {
+      "name": "comment.line.number-sign.mlmd",
+      "match": "#.*$"
+    },
+    "group": {
+      "name": "meta.group.mlmd",
+      "match": "(\\[\\[)(([^\\]>]+)(>)?)*([^\\]]*)(\\]\\])",
+      "captures": {
+        "1": { "name": "keyword.control.group.mlmd" },
+        "6": { "name": "keyword.control.group.mlmd" },
+        "0": {
+          "patterns": [
+            {
+              "match": "\\[\\[|\\]\\]",
+              "name": "keyword.control.group.mlmd"
+            },
+            {
+              "match": ">",
+              "name": "punctuation.separator.mlmd"
+            },
+            {
+              "match": "[^\\[\\]>]+",
+              "name": "entity.name.section.mlmd"
+            }
+          ]
+        }
+      }
+    },
+    "arrow_with_block": {
+      "name": "meta.arrow.mlmd",
+      "match": "(->)\\s*(\\[([^\\]]+)\\])?\\s*([A-Z][A-Za-z0-9_]*)?",
+      "captures": {
+        "1": { "name": "keyword.operator.arrow.mlmd" },
+        "3": { "name": "variable.other.tensor.mlmd" },
+        "4": { "name": "entity.name.type.mlmd" }
+      }
+    },
+    "block_type_start": {
+      "name": "entity.name.type.mlmd",
+      "match": "^\\s*([A-Z][A-Za-z0-9_]*)(?=\\s*[({\\[]|\\s*->|\\s*$)"
+    },
+    "params": {
+      "name": "meta.params.mlmd",
+      "begin": "\\(",
+      "end": "\\)",
+      "beginCaptures": {
+        "0": { "name": "punctuation.definition.parameters.mlmd" }
+      },
+      "endCaptures": {
+        "0": { "name": "punctuation.definition.parameters.mlmd" }
+      },
+      "patterns": [
+        { "include": "#string" },
+        { "include": "#boolean" },
+        { "include": "#number" },
+        { "include": "#param_equals" },
+        { "include": "#param_name" }
+      ]
+    },
+    "string": {
+      "name": "string.quoted.double.mlmd",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        {
+          "name": "constant.character.escape.mlmd",
+          "match": "\\\\."
+        }
+      ]
+    },
+    "boolean": {
+      "name": "constant.language.boolean.mlmd",
+      "match": "\\b(true|false)\\b"
+    },
+    "number": {
+      "name": "constant.numeric.mlmd",
+      "match": "-?\\b\\d+(\\.\\d+)?([eE][+-]?\\d+)?\\b"
+    },
+    "param_equals": {
+      "name": "punctuation.definition.parameters.mlmd",
+      "match": "="
+    },
+    "param_name": {
+      "name": "variable.parameter.mlmd",
+      "match": "\\b[a-z_][A-Za-z0-9_]*\\b(?=\\s*=)"
+    }
+  }
+}
