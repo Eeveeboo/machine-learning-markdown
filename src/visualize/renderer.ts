@@ -73,9 +73,12 @@ export function render(graph: Graph, layoutResult: LayoutResult): string {
   const canvasW = width + PADDING * 2;
   const canvasH = height + PADDING * 2;
 
-  // Account for long-range bezier curves extending past the right edge
+  // Account for long-range bezier curves extending past the right or left edge
   const maxCurveOffset = Math.max(0, ...edges.filter(e => e.isLongRange).map(e => e.curveOffset ?? 0));
-  const adjustedW = canvasW + maxCurveOffset;
+  const minCurveOffset = Math.min(0, ...edges.filter(e => e.isLongRange).map(e => e.curveOffset ?? 0));
+  const leftExtension = Math.abs(Math.min(0, minCurveOffset));
+  const adjustedW = canvasW + maxCurveOffset + leftExtension;
+  const xOffset = PADDING + leftExtension;
 
   const svg = new SvgBuilder(adjustedW, canvasH);
 
@@ -90,7 +93,7 @@ export function render(graph: Graph, layoutResult: LayoutResult): string {
 
   // --- Groups (dashed bounding boxes) ---
   for (const group of groups) {
-    const gx = group.x + PADDING;
+    const gx = group.x + xOffset;
     const gy = group.y + PADDING;
 
     svg.rect(gx, gy, group.width, group.height, {
@@ -111,7 +114,7 @@ export function render(graph: Graph, layoutResult: LayoutResult): string {
   // --- Nodes ---
   for (const node of nodes) {
     const { block, x, y, width: w, height: h } = node;
-    const px = x + PADDING;
+    const px = x + xOffset;
     const py = y + PADDING;
     const cx = px + w / 2;
     const { fill, stroke } = blockColors(block.type);
@@ -172,13 +175,13 @@ export function render(graph: Graph, layoutResult: LayoutResult): string {
     const edgeLabel = edgeLabelParts.join(' ');
 
     if (edge.isLongRange) {
-      // Bezier curve from right edge of source to right edge of target
-      const p0: Point = { x: edge.from.x + edge.from.width, y: edge.from.y + edge.from.height / 2 };
-      const p3: Point = { x: edge.to.x + edge.to.width, y: edge.to.y + edge.to.height / 2 };
+      // Bezier curve using exit/entry ports, supporting left or right side routing
+      const p0: Point = edge.exitPort ?? { x: edge.from.x + edge.from.width, y: edge.from.y + edge.from.height / 2 };
+      const p3: Point = edge.entryPort ?? { x: edge.to.x + edge.to.width, y: edge.to.y + edge.to.height / 2 };
       const off = edge.curveOffset ?? 80;
       const p1: Point = { x: p0.x + off, y: p0.y };
       const p2: Point = { x: p3.x + off, y: p3.y };
-      const d = `M ${p0.x + PADDING} ${p0.y + PADDING} C ${p1.x + PADDING} ${p1.y + PADDING}, ${p2.x + PADDING} ${p2.y + PADDING}, ${p3.x + PADDING} ${p3.y + PADDING}`;
+      const d = `M ${p0.x + xOffset} ${p0.y + PADDING} C ${p1.x + xOffset} ${p1.y + PADDING}, ${p2.x + xOffset} ${p2.y + PADDING}, ${p3.x + xOffset} ${p3.y + PADDING}`;
       svg.path(d, {
         stroke: '#9333ea',
         'stroke-width': '1.5',
@@ -187,21 +190,21 @@ export function render(graph: Graph, layoutResult: LayoutResult): string {
         'marker-end': 'url(#arrowhead)',
       });
 
-      // Label: name + shape just above the source block's top edge
-      const lx = p0.x + PADDING + 8;
-      const ly = edge.from.y + PADDING - 4;
+      // Label: position near the exit port
+      const lx = (edge.labelPosition?.x ?? p0.x + 8) + xOffset;
+      const ly = (edge.labelPosition?.y ?? p0.y - 6) + PADDING;
       svg.text(lx, ly, edgeLabel, {
         'font-size': '9',
         fill: '#9333ea',
-        'text-anchor': 'start',
+        'text-anchor': edge.routeSide === 'left' ? 'end' : 'start',
         'font-family': 'monospace',
       });
     } else if (edge.points.length >= 2) {
       // Build polyline path
       const pts = edge.points;
-      let d = `M ${pts[0].x + PADDING} ${pts[0].y + PADDING}`;
+      let d = `M ${pts[0].x + xOffset} ${pts[0].y + PADDING}`;
       for (let i = 1; i < pts.length; i++) {
-        d += ` L ${pts[i].x + PADDING} ${pts[i].y + PADDING}`;
+        d += ` L ${pts[i].x + xOffset} ${pts[i].y + PADDING}`;
       }
       svg.path(d, {
         stroke: '#64748b',
@@ -215,8 +218,8 @@ export function render(graph: Graph, layoutResult: LayoutResult): string {
         const mid = Math.floor(pts.length / 2);
         const p1 = pts[mid - 1] ?? pts[0];
         const p2 = pts[mid] ?? pts[pts.length - 1];
-        const lx = (p1.x + p2.x) / 2 + PADDING + 4;
-        const ly = (p1.y + p2.y) / 2 + PADDING + 4;
+        const lx = (edge.labelPosition?.x ?? (p1.x + p2.x) / 2 + 4) + xOffset;
+        const ly = (edge.labelPosition?.y ?? (p1.y + p2.y) / 2 + 4) + PADDING;
         svg.text(lx, ly, edgeLabel, {
           'font-size': '8',
           fill: '#94a3b8',

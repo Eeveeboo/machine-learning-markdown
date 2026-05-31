@@ -117,5 +117,14 @@ export function buildGraph(nodes: ASTNode[]): Graph {
     currentTail: null,
   };
   processNodes(state, nodes, []);
+  // Cleanup: remove spurious chain edges between Input blocks
+  state.edges = state.edges.filter(e => {
+    const fromBlock = state.blocks.find(b => b.id === e.from);
+    const toBlock = state.blocks.find(b => b.id === e.to);
+    if (fromBlock && toBlock && fromBlock.type === "Input" && toBlock.type === "Input") {
+      return false;
+    }
+    return true;
+  });
   return { blocks: state.blocks, edges: state.edges, groups: state.groups };
 }

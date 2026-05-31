@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { registry, lookupBlock } from "../../src/blocks/index.js";
-import { registerLayers } from "../../src/blocks/layers.js";
+import { registerBuiltins } from "../../src/plugins/builtins/index.js";
 import type { ParamValue } from "../../src/ast/nodes.js";
 
 function n(value: number): ParamValue {
@@ -20,7 +20,7 @@ function infer(name: string, inputs: number[][], params: Record<string, ParamVal
 describe("layer blocks", () => {
   beforeEach(() => {
     registry.clear();
-    registerLayers();
+    registerBuiltins();
   });
 
   describe("Input", () => {

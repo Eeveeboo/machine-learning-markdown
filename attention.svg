@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1460 444" width="1460" height="444">
+<defs>
+  <marker id="arrowhead" markerWidth="7" markerHeight="5" refX="7" refY="2.5" markerUnits="userSpaceOnUse" orient="auto">
+    <polygon points="0 0, 7 2.5, 0 5" fill="#94a3b8" />
+  </marker>
+</defs>
+<rect x="30" y="12" width="1120" height="378" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6,4" rx="8" />
+<text x="38" y="26" font-size="11" fill="#64748b" font-family="sans-serif" font-weight="500">Attention / SingleHead</text>
+<rect x="40" y="40" width="360" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="220" y="54" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">Input shape=(512,64)</text>
+<text x="220" y="64" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(512,64)</text>
+<rect x="410" y="40" width="360" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="590" y="54" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">Input shape=(512,64)</text>
+<text x="590" y="64" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(512,64)</text>
+<rect x="780" y="40" width="360" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="960" y="54" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">Input shape=(512,64)</text>
+<text x="960" y="64" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(512,64)</text>
+<rect x="40" y="92" width="360" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="220" y="106" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">Linear out=64</text>
+<text x="220" y="116" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(512,64)</text>
+<rect x="410" y="92" width="360" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="590" y="106" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">Linear out=64</text>
+<text x="590" y="116" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(512,64)</text>
+<rect x="780" y="92" width="360" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="960" y="106" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">Linear out=64</text>
+<text x="960" y="116" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(512,64)</text>
+<rect x="410" y="144" width="360" height="28" rx="8" ry="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" />
+<text x="590" y="158" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">MatMul</text>
+<text x="590" y="168" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(512,64)</text>
+<rect x="410" y="196" width="360" height="28" rx="8" ry="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2" />
+<text x="590" y="210" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">Softmax</text>
+<text x="590" y="220" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(512,64)</text>
+<rect x="410" y="248" width="360" height="28" rx="8" ry="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" />
+<text x="590" y="262" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">MatMul</text>
+<text x="590" y="272" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(512,64)</text>
+<rect x="410" y="300" width="360" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="590" y="314" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">Linear out=64</text>
+<text x="590" y="324" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(512,64)</text>
+<rect x="410" y="352" width="360" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="590" y="366" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">Output</text>
+<text x="590" y="376" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(512,64)</text>
+<path d="M 220 68 L 220 92" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
+<text x="224" y="84" font-size="8" fill="#94a3b8" font-family="monospace">query (512,64)</text>
+<path d="M 590 68 L 590 92" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
+<text x="594" y="84" font-size="8" fill="#94a3b8" font-family="monospace">key (512,64)</text>
+<path d="M 960 68 L 960 92" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
+<text x="964" y="84" font-size="8" fill="#94a3b8" font-family="monospace">value (512,64)</text>
+<path d="M 220 120 L 220 127 L 500 127 L 500 144" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
+<text x="364" y="131" font-size="8" fill="#94a3b8" font-family="monospace">q_proj (512,64)</text>
+<path d="M 590 120 L 590 137 L 680 137 L 680 144" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
+<text x="639" y="141" font-size="8" fill="#94a3b8" font-family="monospace">k_proj (512,64)</text>
+<path d="M 590 172 L 590 196" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
+<text x="594" y="188" font-size="8" fill="#94a3b8" font-family="monospace">(512,64)</text>
+<path d="M 590 224 L 590 248" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
+<text x="594" y="240" font-size="8" fill="#94a3b8" font-family="monospace">attn_weights (512,64)</text>
+<path d="M 1140 106 C 1420 106, 1050 262, 770 262" stroke="#9333ea" stroke-width="1.5" fill="none" stroke-dasharray="5,3" marker-end="url(#arrowhead)" />
+<text x="1148" y="94" font-size="9" fill="#9333ea" text-anchor="start" font-family="monospace">→ v_proj (512,64)</text>
+<path d="M 590 276 L 590 300" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
+<text x="594" y="292" font-size="8" fill="#94a3b8" font-family="monospace">(512,64)</text>
+<path d="M 590 328 L 590 352" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
+<text x="594" y="344" font-size="8" fill="#94a3b8" font-family="monospace">(512,64)</text>
+<text x="1170" y="438" text-anchor="end" font-size="10" fill="#94a3b8" font-family="sans-serif">Total params: 16.6K</text>
+</svg>

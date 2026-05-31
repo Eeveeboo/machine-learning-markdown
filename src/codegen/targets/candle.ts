@@ -1,199 +1,12 @@
-import type { Graph, Block } from "../../ast/graph.js";
+import type { Graph } from "../../ast/graph.js";
 import type { BlockDef } from "../../blocks/types.js";
 import { registerTarget } from "../target.js";
 import type { GeneratedFile } from "../target.js";
 import { topoSort, buildAdjacency } from "../../ast/graph-utils.js";
+import { getBlockCodegenWithFallback } from "../block-codegen.js";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function getNum(block: Block, key: string, fallback?: number): number | undefined {
-  const p = block.params[key];
-  if (p && p.kind === "number") return p.value;
-  return fallback;
-}
-
-// ---------------------------------------------------------------------------
-// Struct field generation (learnable layers only)
-// ---------------------------------------------------------------------------
-
-interface StructField {
-  fieldName: string;
-  fieldType: string;
-  initExpr: string;
-}
-
-function blockToField(block: Block): StructField | null {
-  const t = block.type;
-  const inputShape = block.inputShapes[0] ?? [];
-  const outputShape = block.outputShapes[0] ?? [];
-
-  switch (t) {
-    case "Input":
-    case "Output":
-    case "Add":
-    case "Mul":
-    case "Concat":
-    case "Reshape":
-    case "Flatten":
-    case "ReLU":
-    case "Sigmoid":
-    case "Tanh":
-    case "GELU":
-    case "SiLU":
-    case "MaxPool":
-    case "GlobalAvgPool":
-      return null;
-
-    case "Linear": {
-      const inF = inputShape[inputShape.length - 1] ?? 0;
-      const outF = getNum(block, "out_features") ?? getNum(block, "units") ?? outputShape[outputShape.length - 1] ?? 0;
-      return {
-        fieldName: block.id,
-        fieldType: "candle_nn::Linear",
-        initExpr: `candle_nn::linear(${inF}, ${outF}, vb.pp("${block.id}"))?`,
-      };
-    }
-
-    case "Conv2d": {
-      const inCh = inputShape[inputShape.length - 3] ?? inputShape[1] ?? 0;
-      const filters = getNum(block, "filters") ?? getNum(block, "out_channels") ?? 0;
-      const kernel = getNum(block, "kernel") ?? getNum(block, "kernel_size") ?? 3;
-      const stride = getNum(block, "stride") ?? 1;
-      const padding = getNum(block, "padding") ?? 0;
-      return {
-        fieldName: block.id,
-        fieldType: "candle_nn::Conv2d",
-        initExpr: `candle_nn::conv2d(${inCh}, ${filters}, ${kernel}, candle_nn::Conv2dConfig { stride: ${stride}, padding: ${padding}, ..Default::default() }, vb.pp("${block.id}"))?`,
-      };
-    }
-
-    case "BatchNorm": {
-      const features = inputShape.length >= 4
-        ? (inputShape[inputShape.length - 3] ?? inputShape[1] ?? 0)
-        : (inputShape[inputShape.length - 1] ?? 0);
-      return {
-        fieldName: block.id,
-        fieldType: "candle_nn::BatchNorm",
-        initExpr: `candle_nn::batch_norm(${features}, 1e-5, vb.pp("${block.id}"))?`,
-      };
-    }
-
-    case "LayerNorm": {
-      const features = inputShape[inputShape.length - 1] ?? 0;
-      return {
-        fieldName: block.id,
-        fieldType: "candle_nn::LayerNorm",
-        initExpr: `candle_nn::layer_norm(${features}, 1e-5, vb.pp("${block.id}"))?`,
-      };
-    }
-
-    case "Dropout": {
-      const p = getNum(block, "p") ?? getNum(block, "rate") ?? 0.5;
-      return {
-        fieldName: block.id,
-        fieldType: "candle_nn::Dropout",
-        initExpr: `candle_nn::Dropout::new(${p})`,
-      };
-    }
-
-    case "Embedding": {
-      const vocab = getNum(block, "vocab_size") ?? 0;
-      const dim = getNum(block, "embed_dim") ?? getNum(block, "embedding_dim") ?? 0;
-      return {
-        fieldName: block.id,
-        fieldType: "candle_nn::Embedding",
-        initExpr: `candle_nn::embedding(${vocab}, ${dim}, vb.pp("${block.id}"))?`,
-      };
-    }
-
-    case "LSTM": {
-      const inputSize = inputShape[inputShape.length - 1] ?? 0;
-      const hidden = getNum(block, "hidden_size") ?? getNum(block, "hidden") ?? 0;
-      return {
-        fieldName: block.id,
-        fieldType: "candle_nn::LSTM",
-        initExpr: `candle_nn::lstm(${inputSize}, ${hidden}, candle_nn::LSTMConfig::default(), vb.pp("${block.id}"))?`,
-      };
-    }
-
-    case "GRU": {
-      const inputSize = inputShape[inputShape.length - 1] ?? 0;
-      const hidden = getNum(block, "hidden_size") ?? getNum(block, "hidden") ?? 0;
-      return {
-        fieldName: block.id,
-        fieldType: "candle_nn::GRU",
-        initExpr: `candle_nn::gru(${inputSize}, ${hidden}, candle_nn::GRUConfig::default(), vb.pp("${block.id}"))?`,
-      };
-    }
-
-    default:
-      return null;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Forward expression generation
-// ---------------------------------------------------------------------------
-
-function blockToForwardExpr(block: Block, inputVars: string[]): string {
-  const t = block.type;
-  const mainIn = inputVars[0] ?? "x";
-
-  switch (t) {
-    case "ReLU":
-      return `${mainIn}.relu()?`;
-    case "Sigmoid":
-      return `${mainIn}.sigmoid()?`;
-    case "Tanh":
-      return `${mainIn}.tanh()?`;
-    case "GELU":
-      return `${mainIn}.gelu()?`;
-    case "SiLU":
-      return `${mainIn}.silu()?`;
-
-    case "Flatten":
-      return `${mainIn}.flatten_from(1)?`;
-
-    case "MaxPool": {
-      const kernel = getNum(block, "kernel") ?? getNum(block, "kernel_size") ?? 2;
-      const stride = getNum(block, "stride") ?? kernel;
-      return `candle_nn::ops::max_pool2d(&${mainIn}, ${kernel}, ${stride})?`;
-    }
-
-    case "GlobalAvgPool":
-      return `${mainIn}.mean_keepdim(candle_core::D::Minus1)?.mean_keepdim(candle_core::D::Minus2)?`;
-
-    case "Add":
-      return `(&${inputVars[0] ?? "x"} + &${inputVars[1] ?? "x"})?`;
-
-    case "Concat": {
-      const tensors = inputVars.map((v) => `&${v}`).join(", ");
-      return `Tensor::cat(&[${tensors}], 1)?`;
-    }
-
-    case "Dropout":
-      return `self.${block.id}.forward(&${mainIn}, true)?`;
-
-    case "BatchNorm":
-    case "LayerNorm":
-      return `self.${block.id}.forward(&${mainIn})?`;
-
-    case "LSTM": {
-      // candle LSTM: returns sequence of states; use last hidden
-      return `{ let states = candle_nn::RNN::seq(&self.${block.id}, &${mainIn})?; candle_nn::RNN::states_to_tensor(&self.${block.id}, &states)? }`;
-    }
-
-    case "GRU": {
-      return `{ let states = candle_nn::RNN::seq(&self.${block.id}, &${mainIn})?; candle_nn::RNN::states_to_tensor(&self.${block.id}, &states)? }`;
-    }
-
-    default:
-      // learnable layers use Module::forward
-      return `self.${block.id}.forward(&${mainIn})?`;
-  }
-}
+// Ensure all built-in block codegen functions are registered before any codegen runs
+import "../../plugins/builtins/index.js";
 
 // ---------------------------------------------------------------------------
 // Code generation
@@ -210,14 +23,26 @@ export function generateCandle(graph: Graph, _registry: Map<string, BlockDef>): 
     }
   }
 
-  // Collect struct fields (learnable layers)
+  // Collect struct fields (learnable layers) using plugin codegen
+  interface StructField {
+    fieldName: string;
+    fieldType: string;
+    initExpr: string;
+  }
+
   const fields: StructField[] = [];
   const seen = new Set<string>();
   for (const b of sorted) {
-    const field = blockToField(b);
-    if (field && !seen.has(field.fieldName)) {
-      seen.add(field.fieldName);
-      fields.push(field);
+    if (b.type === "Input" || b.type === "Output") continue;
+    const fn = getBlockCodegenWithFallback(b.type, "candle");
+    const result = fn(b, []);
+    if (result.attr && !seen.has(result.attr.name)) {
+      seen.add(result.attr.name);
+      fields.push({
+        fieldName: result.attr.name,
+        fieldType: result.attr.typeAnnotation ?? "/* unknown */",
+        initExpr: result.attr.init,
+      });
     }
   }
 
@@ -247,7 +72,9 @@ export function generateCandle(graph: Graph, _registry: Map<string, BlockDef>): 
       continue;
     }
 
-    const expr = blockToForwardExpr(b, inputVars);
+    const fn = getBlockCodegenWithFallback(b.type, "candle");
+    const result = fn(b, inputVars);
+    const expr = result.forward;
 
     let outVar: string;
     if (namedOutputs.has(b.id)) {

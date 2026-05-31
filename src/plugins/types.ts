@@ -1,6 +1,14 @@
-import type { Shape } from "../ast/graph.js";
+import type { Block, Shape } from "../ast/graph.js";
 import type { ParamValue } from "../ast/nodes.js";
-import type { RenderContext, CodegenContext } from "../visualize/render-context.js";
+import type { ParamSpec } from "../blocks/types.js";
+import type { RenderContext } from "../visualize/render-context.js";
+
+export interface BlockCodegenResult {
+  attr?: { name: string; init: string; typeAnnotation?: string } | null;
+  forward: string;
+}
+
+export type BlockCodegenFn = (block: Block, inputVars: string[]) => BlockCodegenResult;
 
 /**
  * Interface that every plugin must satisfy.
@@ -26,8 +34,10 @@ import type { RenderContext, CodegenContext } from "../visualize/render-context.
 export interface BlockPlugin {
   inputs: string[];
   outputs: string[];
+  params?: ParamSpec[];
   render?(ctx: RenderContext): void;
-  codegen?(ctx: CodegenContext): string;
+  codegen?: Record<string, BlockCodegenFn>;
   inferShape?(inputs: Shape[], params: Record<string, ParamValue>): Shape[];
   paramCount?(inputs: Shape[], params: Record<string, ParamValue>): number;
+  showDepth?: boolean;
 }

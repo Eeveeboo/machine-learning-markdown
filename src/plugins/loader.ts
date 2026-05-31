@@ -15,6 +15,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import type { BlockPlugin } from "./types.js";
 import { registerBlock } from "../blocks/registry.js";
+import { registerBlockCodegen } from "../codegen/block-codegen.js";
 
 const EXTENSIONS = [".mjs", ".js", ".ts"] as const;
 
@@ -75,10 +76,16 @@ export async function loadPlugins(dir: string): Promise<Map<string, BlockPlugin>
 
     result.set(blockType, candidate);
 
+    if (candidate.codegen !== undefined) {
+      for (const [target, fn] of Object.entries(candidate.codegen)) {
+        registerBlockCodegen(blockType, target, fn);
+      }
+    }
+
     if (typeof candidate.inferShape === "function") {
       registerBlock({
         name: blockType,
-        params: [],
+        params: candidate.params ?? [],
         inferShape: candidate.inferShape.bind(candidate),
         ...(candidate.paramCount !== undefined
           ? { paramCount: candidate.paramCount.bind(candidate) }
