@@ -4,6 +4,8 @@ const Concat: BlockPlugin = {
   inputs: ["a", "b"],
   showDepth: false,
   outputs: ["y"],
+
+  params: [{ name: "axis", type: "number", required: false }],
   inferShape(inputs, params) {
     if (inputs.length === 0) throw new Error("Concat requires inputs");
     const v = params["axis"];

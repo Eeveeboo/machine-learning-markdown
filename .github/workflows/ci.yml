@@ -29,3 +29,13 @@ jobs:
 
       - name: Test
         run: npm test
+
+      - name: Install tree-sitter CLI
+        run: npm install -g tree-sitter-cli
+
+      - name: Validate grammar
+        working-directory: grammars/mlmd-grammar
+        run: |
+          npm install
+          tree-sitter generate
+          tree-sitter test

@@ -3,6 +3,8 @@ import type { BlockPlugin } from "../types.js";
 const Gather: BlockPlugin = {
   inputs: ["x"],
   outputs: ["y"],
+
+  params: [{ name: "axis", type: "number", required: false }],
   inferShape(inputs, _params) {
     if (inputs.length === 0) throw new Error("Gather requires an input");
     return [inputs[0]];

@@ -3,6 +3,8 @@ import type { BlockPlugin } from "../types.js";
 const Split: BlockPlugin = {
   inputs: ["x"],
   outputs: ["y"],
+
+  params: [{ name: "chunks", type: "number", required: true }, { name: "axis", type: "number", required: false }],
   inferShape(inputs, params) {
     if (inputs.length === 0) throw new Error("Split requires an input");
     const nv = params["chunks"];

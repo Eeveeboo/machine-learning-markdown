@@ -1,5 +1,6 @@
 import type { BlockPlugin } from "../types.js";
 
+/** @codegen candle: placeholder — learnable PReLU slopes not supported in candle_nn */
 const PReLU: BlockPlugin = {
   inputs: ["x"],
   showDepth: false,

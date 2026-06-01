@@ -73,4 +73,11 @@ describe("built-in registry count", () => {
       ).toBe(true);
     }
   });
+
+  it("every block has inferShape", () => {
+    for (const [name, def] of registry) {
+      expect(def.inferShape, `Block "${name}" is missing inferShape`).toBeDefined();
+      expect(typeof def.inferShape, `Block "${name}" inferShape is not a function`).toBe("function");
+    }
+  });
 });

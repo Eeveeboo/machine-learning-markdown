@@ -5,6 +5,7 @@ export const AdaptiveAvgPool: BlockPlugin = {
   inputs: ["input"],
   outputs: ["output"],
 
+  params: [{ name: "size", type: "shape", required: true }],
   inferShape(inputs, params) {
     if (inputs.length === 0) throw new Error("AdaptiveAvgPool requires an input");
     const [C] = inputs[0];

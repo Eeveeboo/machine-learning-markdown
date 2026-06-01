@@ -162,19 +162,7 @@ function installVscode(): void {
     cpSync(langConfigSrc, resolve(destDir, "language-configuration.json"), { force: true });
   }
 
-  // 4. Fix grammar path in package.json (../syntaxes/ → ./syntaxes/)
-  const pkgPath = resolve(destDir, "package.json");
-  const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
-  if (pkg.contributes?.grammars) {
-    for (const g of pkg.contributes.grammars) {
-      if (g.path && g.path.startsWith("../")) {
-        g.path = g.path.replace(/^\.\.\//, "./");
-      }
-    }
-  }
-  writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n", "utf-8");
-
-  // 5. Install deps and build
+  // 4. Install deps and build
   console.log("installing dependencies...");
   execFileSync("npm", ["install"], { cwd: destDir, stdio: "inherit" });
 

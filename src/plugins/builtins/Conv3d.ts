@@ -1,6 +1,7 @@
 import type { BlockPlugin } from "../types.js";
 import { getNum, convOut } from "./_helpers.js";
 
+/** @codegen candle: unimplemented — candle_nn does not support Conv3d */
 export const Conv3d: BlockPlugin = {
   inputs: ["input"],
   outputs: ["output"],

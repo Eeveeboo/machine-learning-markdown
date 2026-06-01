@@ -5,6 +5,8 @@ const LeakyReLU: BlockPlugin = {
   inputs: ["x"],
   showDepth: false,
   outputs: ["y"],
+
+  params: [{ name: "negative_slope", type: "number", required: false }],
   inferShape(inputs, _params) {
     if (inputs.length === 0) throw new Error("LeakyReLU requires an input");
     return [inputs[0]];

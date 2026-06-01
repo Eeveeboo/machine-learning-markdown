@@ -4,6 +4,8 @@ const Dropout: BlockPlugin = {
   inputs: ["x"],
   showDepth: false,
   outputs: ["y"],
+
+  params: [{ name: "p", type: "number", required: false }],
   inferShape(inputs, _params) {
     if (inputs.length === 0) throw new Error("Dropout requires an input");
     return [inputs[0]];

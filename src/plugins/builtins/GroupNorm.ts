@@ -5,6 +5,7 @@ export const GroupNorm: BlockPlugin = {
   inputs: ["input"],
   outputs: ["output"],
 
+  params: [{ name: "num_groups", type: "number", required: false }],
   inferShape(inputs, _params) {
     if (inputs.length === 0) throw new Error("GroupNorm requires an input");
     return [inputs[0]];

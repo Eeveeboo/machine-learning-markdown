@@ -5,6 +5,7 @@ export const GRU: BlockPlugin = {
   inputs: ["input"],
   outputs: ["output", "hidden"],
 
+  params: [{ name: "hidden_size", type: "number", required: true }, { name: "num_layers", type: "number", required: false }],
   inferShape(inputs, params) {
     if (inputs.length === 0) throw new Error("GRU requires an input");
     const [seq] = inputs[0];

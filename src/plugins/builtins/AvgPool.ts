@@ -5,10 +5,12 @@ function poolOut(size: number, kernel: number, stride: number, padding: number):
   return Math.floor((size + 2 * padding - kernel) / stride) + 1;
 }
 
+/** @codegen candle: placeholder — AvgPool2d not directly supported in candle_nn::ops */
 export const AvgPool: BlockPlugin = {
   inputs: ["input"],
   outputs: ["output"],
 
+  params: [{ name: "kernel", type: "number", required: true }, { name: "stride", type: "number", required: false }, { name: "padding", type: "number", required: false }],
   inferShape(inputs, params) {
     if (inputs.length === 0) throw new Error("AvgPool requires an input");
     const [C, H, W] = inputs[0];

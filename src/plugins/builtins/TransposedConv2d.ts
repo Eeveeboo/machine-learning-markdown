@@ -1,6 +1,7 @@
 import type { BlockPlugin } from "../types.js";
 import { getNum, convTransposeOutputSize } from "./_helpers.js";
 
+/** @codegen candle: unimplemented — candle_nn does not support TransposedConv2d */
 export const TransposedConv2d: BlockPlugin = {
   inputs: ["input"],
   outputs: ["output"],

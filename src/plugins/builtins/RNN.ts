@@ -1,10 +1,12 @@
 import type { BlockPlugin } from "../types.js";
 import { getNum } from "./_helpers.js";
 
+/** @codegen candle: placeholder — vanilla RNN not natively supported in candle_nn; uses linear approximation */
 export const RNN: BlockPlugin = {
   inputs: ["input"],
   outputs: ["output"],
 
+  params: [{ name: "hidden_size", type: "number", required: true }, { name: "num_layers", type: "number", required: false }],
   inferShape(inputs, params) {
     if (inputs.length === 0) throw new Error("RNN requires an input");
     const [seq] = inputs[0];

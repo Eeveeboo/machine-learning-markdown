@@ -5,6 +5,8 @@ const Pad: BlockPlugin = {
   inputs: ["x"],
   showDepth: false,
   outputs: ["y"],
+
+  params: [{ name: "padding", type: "shape", required: true }],
   inferShape(inputs, params) {
     if (inputs.length === 0) throw new Error("Pad requires an input");
     const [C, H, W] = inputs[0];

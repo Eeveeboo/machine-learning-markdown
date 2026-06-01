@@ -5,6 +5,8 @@ const Reshape: BlockPlugin = {
   inputs: ["x"],
   showDepth: false,
   outputs: ["y"],
+
+  params: [{ name: "shape", type: "shape", required: true }],
   inferShape(_inputs, params) {
     const v = params["shape"];
     if (!v) throw new Error("Reshape requires shape param");

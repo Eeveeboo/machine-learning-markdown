@@ -5,6 +5,8 @@ const Softmax: BlockPlugin = {
   inputs: ["x"],
   showDepth: false,
   outputs: ["y"],
+
+  params: [{ name: "dim", type: "number", required: false }],
   inferShape(inputs, _params) {
     if (inputs.length === 0) throw new Error("Softmax requires an input");
     return [inputs[0]];

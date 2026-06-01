@@ -5,6 +5,8 @@ const ELU: BlockPlugin = {
   inputs: ["x"],
   showDepth: false,
   outputs: ["y"],
+
+  params: [{ name: "alpha", type: "number", required: false }],
   inferShape(inputs, _params) {
     if (inputs.length === 0) throw new Error("ELU requires an input");
     return [inputs[0]];

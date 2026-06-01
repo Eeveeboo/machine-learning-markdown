@@ -23,6 +23,7 @@ export { topoSort, topoSortIds, buildAdjacency } from "./ast/graph-utils.js";
 export type { NodeInfo } from "./ast/graph-utils.js";
 
 // Block registry
+import "./blocks/index.js";
 export { registerBlock, lookupBlock, registry } from "./blocks/registry.js";
 export type { BlockDef, ParamSpec, ParamType } from "./blocks/types.js";
 

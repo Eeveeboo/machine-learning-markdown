@@ -21,7 +21,7 @@
       {
         "language": "mlmd",
         "scopeName": "source.mlmd",
-        "path": "../syntaxes/mlmd.tmLanguage.json"
+        "path": "./syntaxes/mlmd.tmLanguage.json"
       }
     ],
     "commands": [

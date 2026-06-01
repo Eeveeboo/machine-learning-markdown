@@ -175,4 +175,99 @@ describe("inferShapes", () => {
       expect(result.errors[0].message).toBe("bad shape!");
     });
   });
+
+  describe("edge cases", () => {
+    it("zero-dimension tensors flow through passthrough blocks without error", () => {
+      // Input(shape=[]) → ReLU → Sigmoid
+      const graph: Graph = {
+        blocks: [
+          makeBlock("b0", "Input", { shape: s() }),
+          makeBlock("b1", "ReLU"),
+          makeBlock("b2", "Sigmoid"),
+        ],
+        edges: [makeEdge("b0", "b1"), makeEdge("b1", "b2")],
+        groups: [],
+      };
+      const result = inferShapes(graph, registry);
+      expect(result.errors).toHaveLength(0);
+      const blockById = new Map(result.graph.blocks.map((b) => [b.id, b]));
+      // Input with shape[] produces output shape []
+      expect(blockById.get("b0")!.outputShapes).toEqual([[]]);
+      // ReLU: passthrough → []
+      expect(blockById.get("b1")!.outputShapes).toEqual([[]]);
+      // Sigmoid: passthrough → []
+      expect(blockById.get("b2")!.outputShapes).toEqual([[]]);
+    });
+
+    // SKIPPED: inferShape currently does not validate required params.
+    // This test documents the gap — enabling it requires adding param validation
+    // to inferShapes() in src/ast/infer.ts.
+    it.skip("missing required params on Linear returns errors", () => {
+      const graph: Graph = {
+        blocks: [
+          makeBlock("b0", "Input", { shape: s(10) }),
+          makeBlock("b1", "Linear"), // no out_features
+        ],
+        edges: [makeEdge("b0", "b1")],
+        groups: [],
+      };
+      const result = inferShapes(graph, registry);
+      expect(result.errors.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("multi-output LSTM infers both output shapes", () => {
+      const graph: Graph = {
+        blocks: [
+          makeBlock("b0", "Input", { shape: s(5, 10) }),
+          makeBlock("b1", "LSTM", { hidden_size: n(20) }),
+          makeBlock("b2", "ReLU"),
+        ],
+        edges: [
+          makeEdge("b0", "b1"),
+          makeEdge("b1", "b2"), // downstream from LSTM
+        ],
+        groups: [],
+      };
+      const result = inferShapes(graph, registry);
+      expect(result.errors).toHaveLength(0);
+      const blockById = new Map(result.graph.blocks.map((b) => [b.id, b]));
+      const lstm = blockById.get("b1")!;
+      // LSTM has two named outputs: "output" and "hidden"
+      expect(lstm.outputShapes).toHaveLength(2);
+      // output shape: [seq_len, hidden_size] → [5, 20]
+      expect(lstm.outputShapes[0]).toEqual([5, 20]);
+      // hidden shape: [hidden_size] → [20]
+      expect(lstm.outputShapes[1]).toEqual([20]);
+      // Downstream block (ReLU) should get input from first output
+      expect(blockById.get("b2")!.inputShapes).toEqual([[5, 20]]);
+    });
+
+    // SKIPPED: inferShape currently does not validate param values (negative stride).
+    // This test documents the gap — enabling it requires adding param validation
+    // to inferShapes() in src/ast/infer.ts.
+    it.skip("negative stride on MaxPool returns error", () => {
+      const graph: Graph = {
+        blocks: [
+          makeBlock("b0", "Input", { shape: s(3, 10, 10) }),
+          makeBlock("b1", "MaxPool", { kernel: n(2), stride: n(-1) }),
+        ],
+        edges: [makeEdge("b0", "b1")],
+        groups: [],
+      };
+      const result = inferShapes(graph, registry);
+      expect(result.errors.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("unknown block type returns error", () => {
+      const graph: Graph = {
+        blocks: [makeBlock("b0", "TotallyFakeBlock")],
+        edges: [],
+        groups: [],
+      };
+      const result = inferShapes(graph, registry);
+      expect(result.errors.length).toBeGreaterThanOrEqual(1);
+      expect(result.errors[0].blockId).toBe("b0");
+      expect(result.errors[0].message).toContain("TotallyFakeBlock");
+    });
+  });
 });

@@ -3,6 +3,8 @@ import type { BlockPlugin } from "../types.js";
 const Repeat: BlockPlugin = {
   inputs: ["x"],
   outputs: ["y"],
+
+  params: [{ name: "times", type: "number", required: true }],
   inferShape(inputs, _params) {
     if (inputs.length === 0) throw new Error("Repeat requires an input");
     return [inputs[0]];

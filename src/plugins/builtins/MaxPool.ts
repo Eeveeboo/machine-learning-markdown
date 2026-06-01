@@ -9,6 +9,7 @@ export const MaxPool: BlockPlugin = {
   inputs: ["input"],
   outputs: ["output"],
 
+  params: [{ name: "kernel", type: "number", required: true }, { name: "stride", type: "number", required: false }, { name: "padding", type: "number", required: false }],
   inferShape(inputs, params) {
     if (inputs.length === 0) throw new Error("MaxPool requires an input");
     const [C, H, W] = inputs[0];

@@ -4,6 +4,7 @@ export const BatchNorm: BlockPlugin = {
   inputs: ["input"],
   outputs: ["output"],
 
+  params: [{ name: "num_features", type: "number", required: false }],
   inferShape(inputs, _params) {
     if (inputs.length === 0) throw new Error("BatchNorm requires an input");
     return [inputs[0]];

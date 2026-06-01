@@ -172,4 +172,47 @@ describe("candle codegen target", () => {
       expect(files[0].content).toContain("pub struct Model");
     });
   });
+
+  describe("known candle codegen gaps", () => {
+    it("Conv3d emits unimplemented! for candle", () => {
+      const blocks = [makeBlock("c1", "Conv3d", { filters: num(8), kernel: num(3) }, [[1, 3, 16, 16, 16]], [[1, 8, 14, 14, 14]])];
+      const graph = makeGraph(blocks);
+      const files = target!.generate(graph, new Map());
+      const code = files.map(f => f.content).join("\n");
+      expect(code).toContain("unimplemented!");
+    });
+
+    it("TransposedConv2d emits unimplemented! for candle", () => {
+      const blocks = [makeBlock("tc1", "TransposedConv2d", { filters: num(8), kernel: num(3) }, [[1, 3, 16, 16]], [[1, 8, 18, 18]])];
+      const graph = makeGraph(blocks);
+      const files = target!.generate(graph, new Map());
+      const code = files.map(f => f.content).join("\n");
+      expect(code).toContain("unimplemented!");
+    });
+
+    it("PReLU falls back to .relu() for candle", () => {
+      const blocks = [makeBlock("p1", "PReLU", {}, [[1, 64]], [[1, 64]])];
+      const graph = makeGraph(blocks);
+      const files = target!.generate(graph, new Map());
+      const code = files.map(f => f.content).join("\n");
+      expect(code).toContain(".relu()");
+    });
+
+    it("AvgPool emits comment about not directly supported for candle", () => {
+      const blocks = [makeBlock("a1", "AvgPool", { kernel: num(2) }, [[1, 3, 28, 28]], [[1, 3, 14, 14]])];
+      const graph = makeGraph(blocks);
+      const files = target!.generate(graph, new Map());
+      const code = files.map(f => f.content).join("\n");
+      expect(code).toContain("not directly supported");
+    });
+
+    it("RNN emits comment about not natively supported and uses candle_nn::linear", () => {
+      const blocks = [makeBlock("r1", "RNN", { hidden_size: num(64) }, [[1, 10, 32]], [[1, 10, 64]])];
+      const graph = makeGraph(blocks);
+      const files = target!.generate(graph, new Map());
+      const code = files.map(f => f.content).join("\n");
+      expect(code).toContain("not natively supported");
+      expect(code).toContain("candle_nn::linear");
+    });
+  });
 });
