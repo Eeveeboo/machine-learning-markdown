@@ -1,21 +1,19 @@
-# MLMD Legacy Zed Language Config
+# MLMD Language Config
 
-This directory provides basic language server support for `.mlmd` files when installed via:
+This directory contains Zed language configuration files for the MLMD DSL:
+`config.toml`, `highlights.scm`, `brackets.scm`, `indents.scm`, `outline.scm`,
+and `language-configuration.json`.
+
+These are bundled in the Zed dev extension (`extension.toml` at the project root
+references `languages/mlmd/`).
+
+## Installation
+
+From the repo root:
 
 ```bash
 mlmd install zed
 ```
 
-This copies the config to `~/.config/zed/languages/mlmd/`.
-
-## Limitations
-
-This legacy approach does NOT provide syntax highlighting (tree-sitter grammar not included).
-
-## For Full Zed Support
-
-Use the [zed-mlmd dev extension](../../zed-mlmd/) instead, which provides:
-- Syntax highlighting
-- Bracket matching
-- Outline panel
-- Language server integration
+This sets up the full dev extension at the project root, including these
+language config files. No manual copying needed.

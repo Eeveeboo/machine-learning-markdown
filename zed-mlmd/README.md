@@ -1,46 +1,43 @@
-# zed-mlmd
+# zed-mlmd — Zed Editor Extension
 
-Zed editor extension for the [MLMD](https://github.com/eeveeboo/nnml) neural network DSL.
+Zed extension source for the [MLMD](https://github.com/eeveeboo/nnml) neural network DSL.
 
 ## Features
 
-- Syntax highlighting for `.mlmd` files
+- Syntax highlighting (tree-sitter grammar)
 - Bracket matching
 - Outline panel support
-- Language server (diagnostics, hover, completions)
+- LSP integration (diagnostics, hover, completions)
 
-## Development Installation
+## Quick Start
 
-1. **Generate the parser** (requires `tree-sitter-cli`):
-   ```bash
-   npm install -g tree-sitter-cli   # one-time global install
-   cd zed-mlmd/grammars/mlmd && npm install
-   tree-sitter generate
-   cd ../..
-   ```
-   > **Note:** You do **not** need to compile WASM manually. When installing as a
-   > dev extension, Zed compiles the grammar from the generated C source automatically.
+Run from the repo root:
 
-2. **Install as dev extension in Zed**:
-   - Open Zed
-   - Press `Cmd+Shift+X` → click "Install Dev Extension"
-   - Select the repo root (**`<repo>/nnml/`**, not `zed-mlmd/`) — this is where
-     `extension.toml` now lives
+```bash
+mlmd install zed
+```
 
-3. Open any `.mlmd` file — syntax highlighting and LSP should activate.
+This generates the grammar parser, builds the grammar WASM, compiles the Rust
+extension as a WASM component, and configures `extension.toml` for your machine.
 
-## Building the Rust extension manually
+Then open Zed → **Cmd+Shift+X** → "Install Dev Extension" → select the repo root.
+
+## Manual Build
 
 ```bash
 cd zed-mlmd
 ./build.sh
 ```
 
-This generates the grammar, builds the Rust WASM component, and copies
-`extension.wasm` to the repo root (where Zed expects it alongside `extension.toml`).
+## Development Notes
+
+- The tree-sitter grammar source is at `../grammars/mlmd-grammar/` (not in this directory)
+- `extension.toml` lives at the repo root (`../extension.toml`)
+- The LSP server is called via `worktree.which("mlmd")` (global install) or
+  `worktree.root_path()/dist/bin/mlmd.js` (dev mode)
 
 ## Requirements
 
 - [Zed editor](https://zed.dev)
-- `tree-sitter-cli` for generating the parser (`npm install -g tree-sitter-cli`)
-- Node.js for the MLMD language server (called via `node dist/bin/mlmd.js lsp`)
+- Rust `wasm32-wasip2` target for building the extension WASM
+- Node.js for the MLMD language server

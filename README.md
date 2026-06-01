@@ -414,12 +414,25 @@ mlmd install vscode
 
 ### Zed
 
-**Prerequisites:** [tree-sitter-cli](https://github.com/tree-sitter/tree-sitter) (for generating the parser)
+The `mlmd install zed` command sets up a full dev extension from your local checkout:
 
 ```bash
-npm install -g tree-sitter-cli          # one-time install
-mlmd install zed                        # prepare the extension
+# From the repo root (after npm install && npm run build)
+mlmd install zed
 ```
+
+This performs the full build pipeline:
+- Generates the tree-sitter C parser from `grammar.js`
+- Compiles grammar WASM (if tree-sitter WASI deps available; otherwise Zed compiles from source)
+- Updates `extension.toml` with the local `file://` URL to the grammar repo
+- Builds the Rust extension as a WASM component (`cargo build --target wasm32-wasip2`)
+- Copies the extension WASM to the extension root
+
+After running, install the dev extension in Zed:
+1. Open Zed → press **Cmd+Shift+X** (or **Ctrl+Shift+X** on Linux)
+2. Click **Install Dev Extension** (top-right)
+3. Select this directory (`<project-root>`)
+4. Open any `.mlmd` file — highlighting + LSP activate
 
 **Features:**
 - Syntax highlighting (tree-sitter grammar)
@@ -576,7 +589,8 @@ npm install
 │   ├── visualize/         # Layout + SVG rendering
 │   └── index.ts           # Public API barrel exports
 ├── bin/mlmd.ts            # CLI entry point
-├── grammars/mlmd/         # Tree-sitter grammar package
+├── grammars/mlmd-grammar/ # Tree-sitter grammar package (source)
+├── grammars/mlmd.wasm     # Pre-built grammar WASM
 ├── syntaxes/              # TextMate grammar for syntax highlighting
 ├── languages/mlmd/        # Editor configs (VS Code, legacy Zed)
 ├── mlmd-vscode/           # VS Code extension
@@ -597,7 +611,7 @@ npx vitest --watch                     # watch mode
 ### Building the Tree-Sitter Grammar
 
 ```bash
-cd grammars/mlmd
+cd grammars/mlmd-grammar
 npm install
 npm exec tree-sitter generate
 ```
