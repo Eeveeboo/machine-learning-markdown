@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { writeFileSync, mkdirSync, rmSync } from "node:fs";
-import { resolve } from "node:path";
+import { writeFileSync, mkdirSync, rmSync, mkdtempSync } from "node:fs";
+import { resolve, join } from "node:path";
+import { tmpdir } from "node:os";
 import { loadConfig } from "../../src/config/loader.js";
 import { validateConfig } from "../../src/config/schema.js";
 
-const TMP = "/var/folders/42/zqmvykk92n55d_mvpq_l2n8h0000gp/T/opencode/config-test";
+const TMP = mkdtempSync(join(tmpdir(), "config-test-"));
 
 describe("validateConfig", () => {
   it("accepts valid full config", () => {
