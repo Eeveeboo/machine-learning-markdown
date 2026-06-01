@@ -28,35 +28,53 @@ The toolchain includes a CLI, a programmatic TypeScript API, a tree-sitter gramm
 - [LSP Features](#lsp-features)
 - [Programmatic API](#programmatic-api)
 - [Development](#development)
-- [Project Status](#project-status)
 
 ---
 
 ## Quick Start
 
-Create a file `lenet.mlmd`:
+Create a file `unet.mlmd`:
 
 ```mlmd
-# LeNet-5 architecture
-# Input: 1x28x28 (MNIST-style)
+# U-Net encoder-decoder with skip connections
+# Input: 1x64x64 (single-channel image)
 
-[[ LeNet5 ]]
+[[ UNet ]]
 
-Input(shape=(1,28,28))
-    -> Conv2d(filters=6, kernel=5)
-    -> ReLU
-    -> MaxPool(kernel=2, stride=2)
-    -> Conv2d(filters=16, kernel=5)
-    -> ReLU
-    -> MaxPool(kernel=2, stride=2)
-    -> Flatten
-    -> Linear(out_features=120)
-    -> ReLU
-    -> Linear(out_features=84)
-    -> ReLU
-    -> Linear(out_features=10)
-    -> Output
+[[ UNet > Encoder ]]
+
+# Encoder level 1: produces skip connection and continues downward
+Input(shape=(1,64,64))
+    -> Conv2d(filters=32, kernel=3, padding=1) -> ReLU -> [enc1_skip, enc1_down]
+
+[[ UNet > Bottleneck ]]
+
+# Encoder level 2 + bottleneck
+[enc1_down] -> MaxPool(kernel=2, stride=2)
+            -> Conv2d(filters=64, kernel=3, padding=1) -> ReLU -> [enc2_skip, enc2_down]
+
+[enc2_down]  -> MaxPool(kernel=2, stride=2)
+             -> Conv2d(filters=128, kernel=3, padding=1) -> ReLU -> [bottleneck]
+
+[[ UNet > Decoder ]]
+
+# Decoder level 1: upsample bottleneck, merge with enc2 skip
+[bottleneck] -> TransposedConv2d(filters=64, kernel=2, stride=2) -> [up1]
+[up1, enc2_skip] -> Concat(axis=0)
+                 -> Conv2d(filters=64, kernel=3, padding=1) -> ReLU -> [dec1]
+
+# Decoder level 2: upsample, merge with enc1 skip
+[dec1]           -> TransposedConv2d(filters=32, kernel=2, stride=2) -> [up2]
+[up2, enc1_skip] -> Concat(axis=0)
+                 -> Conv2d(filters=32, kernel=3, padding=1) -> ReLU
+                 -> Conv2d(filters=1, kernel=1)
+                 -> Output
+
 ```
+
+| Renders as                |
+|---------------------------|
+| ![](./examples/unet.svg) |
 
 From the repository root, run:
 

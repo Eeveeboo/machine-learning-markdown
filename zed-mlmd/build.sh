@@ -14,7 +14,7 @@ else
 fi
 
 echo "==> Installing grammar dependencies..."
-cd grammars/mlmd
+cd ../grammars/mlmd-grammar
 npm install
 
 echo "==> Generating parser..."
@@ -29,8 +29,8 @@ else
   echo "   To build WASM, install emscripten: https://emscripten.org/docs/getting_started/downloads.html"
   echo "   OR use Docker: tree-sitter build --wasm (docker must be running)"
   echo ""
-   echo "   The parser C source is still generated and can be used directly."
-   echo "   For Zed dev extension, Zed will compile the grammar from source."
+  echo "   The parser C source is still generated and can be used directly."
+  echo "   For Zed dev extension, Zed will compile the grammar from source."
 fi
 
 echo ""

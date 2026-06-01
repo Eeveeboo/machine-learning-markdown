@@ -7,7 +7,7 @@ authors = ["eeveeboo"]
 repository = "https://github.com/Eeveeboo/machine-learning-markdown"
 
 [grammars.mlmd]
-repository = "file:///Users/evelyne/src/eeveeboo/nnml/zed-mlmd/grammars/.bare-mlmd"
+repository = "file:///Users/evelyne/src/eeveeboo/nnml/grammars/mlmd-grammar"
 rev = "main"
 
 [language_servers.mlmd-language-server]

@@ -37,4 +37,4 @@
 ; Punctuation
 "," @punctuation.delimiter
 "=" @operator
-":" @punctuation.delimiter
+">" @punctuation.delimiter
