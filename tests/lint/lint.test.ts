@@ -151,7 +151,7 @@ describe("lint()", () => {
   });
 
   describe("duplicate tensor names", () => {
-    it("catches duplicate tensor names", () => {
+    it("catches duplicate tensor names from different source blocks", () => {
       const graph: Graph = {
         blocks: [
           makeBlock("b0", "Input", { shape: s(1) }),
@@ -160,9 +160,8 @@ describe("lint()", () => {
           makeBlock("b3", "Add"),
         ],
         edges: [
-          makeEdge("b0", "b1", "feat"),
-          makeEdge("b0", "b2", "feat"), // duplicate!
-          makeEdge("b1", "b3"),
+          makeEdge("b0", "b2", "feat"),
+          makeEdge("b1", "b3", "feat"), // same name, DIFFERENT source block → duplicate!
           makeEdge("b2", "b3"),
         ],
         groups: [],
@@ -172,6 +171,27 @@ describe("lint()", () => {
       expect(dupErrors.length).toBeGreaterThan(0);
       expect(dupErrors[0].severity).toBe("error");
       expect(dupErrors[0].message).toContain("feat");
+    });
+
+    it("allows same tensor name from same source block (fan-out)", () => {
+      const graph: Graph = {
+        blocks: [
+          makeBlock("b0", "Input", { shape: s(1) }),
+          makeBlock("b1", "ReLU"),
+          makeBlock("b2", "ReLU"),
+          makeBlock("b3", "Add"),
+        ],
+        edges: [
+          makeEdge("b0", "b1", "feat"),
+          makeEdge("b0", "b2", "feat"), // same source → valid fan-out
+          makeEdge("b1", "b3"),
+          makeEdge("b2", "b3"),
+        ],
+        groups: [],
+      };
+      const diags = lint(graph, registry);
+      const dupErrors = diags.filter((d) => d.rule === "duplicate-tensor-name");
+      expect(dupErrors.length).toBe(0);
     });
   });
 

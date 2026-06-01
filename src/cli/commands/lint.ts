@@ -1,10 +1,14 @@
 import { readFileSync } from "fs";
+import { resolve } from "path";
 import type { Command } from "commander";
 import { tokenize } from "../../parser/index.js";
 import { parse } from "../../parser/index.js";
 import { buildGraph } from "../../parser/index.js";
+import { inferShapes } from "../../shape/infer.js";
 import { registry } from "../../blocks/registry.js";
 import { lint, type LintDiagnostic } from "../../lint/index.js";
+import { loadPlugins } from "../../plugins/index.js";
+import { loadConfig } from "../../config/loader.js";
 // Import side-effect: registers all built-in blocks
 import "../../blocks/index.js";
 
@@ -19,7 +23,13 @@ export function registerLintCommand(program: Command): void {
     .command("lint <file>")
     .description("Lint a .mlmd file for errors and warnings")
     .option("--json", "output diagnostics as JSON")
-    .action((file: string, options: { json?: boolean }) => {
+    .action(async (file: string, options: { json?: boolean }) => {
+      // Load plugins from config if present
+      const config = loadConfig();
+      if (config?.plugins) {
+        await loadPlugins(config.plugins);
+      }
+
       let source: string;
       try {
         source = readFileSync(file, "utf-8");
@@ -51,21 +61,32 @@ export function registerLintCommand(program: Command): void {
       }
 
       const graph = buildGraph(parseResult.nodes);
-      const diags = lint(graph, registry);
+      const shapeResult = inferShapes(graph, registry);
+
+      // Collect shape errors too
+      const allDiags: LintDiagnostic[] = shapeResult.errors.map((e) => ({
+        severity: "error",
+        message: e.message,
+        loc: { line: 0, col: 0, offset: 0 },
+        rule: "shape-mismatch",
+      }));
+
+      const lintDiags = lint(graph, registry);
+      allDiags.push(...lintDiags);
 
       if (options.json) {
-        console.log(JSON.stringify(diags, null, 2));
+        console.log(JSON.stringify(allDiags, null, 2));
       } else {
-        if (diags.length === 0) {
+        if (allDiags.length === 0) {
           console.log("No issues found.");
         } else {
-          for (const d of diags) {
+          for (const d of allDiags) {
             console.log(formatDiagnostic(d));
           }
         }
       }
 
-      const hasErrors = diags.some((d) => d.severity === "error");
+      const hasErrors = allDiags.some((d) => d.severity === "error");
       process.exit(hasErrors ? 1 : 0);
     });
 }

@@ -171,27 +171,27 @@ export function checkShapes(
   return diags;
 }
 
-/** Rule: duplicate tensor names */
+/** Rule: duplicate tensor names — only error when the same name is produced by different source blocks (valid fan-out from the same block is allowed) */
 export function checkDuplicateTensorNames(
   graph: Graph,
   _registry: Map<string, BlockDef>
 ): LintDiagnostic[] {
-  const seen = new Map<string, { edge: typeof graph.edges[number]; count: number }>();
+  // Track edges by (tensorName, source block)
+  const seen = new Map<string, string[]>(); // tensorName → list of source block IDs
   for (const e of graph.edges) {
     if (!e.tensorName) continue;
-    if (seen.has(e.tensorName)) {
-      seen.get(e.tensorName)!.count++;
-    } else {
-      seen.set(e.tensorName, { edge: e, count: 1 });
-    }
+    const list = seen.get(e.tensorName) ?? [];
+    list.push(e.from);
+    seen.set(e.tensorName, list);
   }
 
   const diags: LintDiagnostic[] = [];
-  for (const [name, { count }] of seen) {
-    if (count > 1) {
+  for (const [name, sources] of seen) {
+    const uniqueSources = new Set(sources);
+    if (uniqueSources.size > 1) {
       diags.push({
         severity: "error",
-        message: `Tensor name "${name}" is defined ${count} times`,
+        message: `Tensor name "${name}" is defined by ${uniqueSources.size} different blocks`,
         loc: UNKNOWN_LOC,
         rule: "duplicate-tensor-name",
       });

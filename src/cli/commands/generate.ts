@@ -43,7 +43,7 @@ export function registerGenerateCommand(program: Command): void {
       }
 
       const graph = buildGraph(parseResult.nodes);
-      inferShapes(graph, registry);
+      const { graph: shapedGraph } = inferShapes(graph, registry);
 
       // Determine targets
       let targets: { lang: string; out: string }[];
@@ -66,7 +66,7 @@ export function registerGenerateCommand(program: Command): void {
           process.exit(1);
         }
 
-        const files = codegenTarget.generate(graph, registry);
+        const files = codegenTarget.generate(shapedGraph, registry);
         const outDir = resolve(out);
         mkdirSync(outDir, { recursive: true });
 
