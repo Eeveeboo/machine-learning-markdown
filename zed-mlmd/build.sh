@@ -29,6 +29,24 @@ else
   echo "   To build WASM, install emscripten: https://emscripten.org/docs/getting_started/downloads.html"
   echo "   OR use Docker: tree-sitter build --wasm (docker must be running)"
   echo ""
-  echo "   The parser C source is still generated and can be used directly."
-  echo "   For Zed dev extension, Zed will compile the grammar from source."
+   echo "   The parser C source is still generated and can be used directly."
+   echo "   For Zed dev extension, Zed will compile the grammar from source."
 fi
+
+echo ""
+echo "==> Building Rust extension WASM..."
+cd "$(dirname "$0")/.."
+if command -v cargo &> /dev/null; then
+  if rustup target list --installed 2>/dev/null | grep -q wasip2; then
+    cargo build --target wasm32-wasip2 --release
+    cp target/wasm32-wasip2/release/zed_mlmd.wasm extension.wasm 2>/dev/null || true
+    echo "==> Rust extension WASM built: extension.wasm"
+  else
+    echo "⚠️  wasm32-wasip2 target not installed. Run: rustup target add wasm32-wasip2"
+  fi
+else
+  echo "⚠️  cargo not found. Install Rust: https://rustup.rs"
+fi
+
+echo ""
+echo "==> Done."

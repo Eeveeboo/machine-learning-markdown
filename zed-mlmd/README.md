@@ -7,14 +7,14 @@ Zed editor extension for the [MLMD](https://github.com/eeveeboo/nnml) neural net
 - Syntax highlighting for `.mlmd` files
 - Bracket matching
 - Outline panel support
-- Language server (diagnostics, hover, completions) via `npx mlmd lsp`
+- Language server (diagnostics, hover, completions)
 
 ## Development Installation
 
 1. **Generate the parser** (requires `tree-sitter-cli`):
    ```bash
    npm install -g tree-sitter-cli   # one-time global install
-   cd grammars/mlmd && npm install
+   cd zed-mlmd/grammars/mlmd && npm install
    tree-sitter generate
    cd ../..
    ```
@@ -24,19 +24,23 @@ Zed editor extension for the [MLMD](https://github.com/eeveeboo/nnml) neural net
 2. **Install as dev extension in Zed**:
    - Open Zed
    - Press `Cmd+Shift+X` → click "Install Dev Extension"
-   - Select this `zed-mlmd/` directory
+   - Select the repo root (**`<repo>/nnml/`**, not `zed-mlmd/`) — this is where
+     `extension.toml` now lives
 
 3. Open any `.mlmd` file — syntax highlighting and LSP should activate.
 
-## Building WASM manually (optional)
+## Building the Rust extension manually
 
-If you want to test the grammar outside of Zed (e.g. with `tree-sitter parse`),
-you can build the WASM bundle with `./build.sh`. This requires either
-[emscripten](https://emscripten.org/docs/getting_started/downloads.html) or
-Docker to be available.
+```bash
+cd zed-mlmd
+./build.sh
+```
+
+This generates the grammar, builds the Rust WASM component, and copies
+`extension.wasm` to the repo root (where Zed expects it alongside `extension.toml`).
 
 ## Requirements
 
 - [Zed editor](https://zed.dev)
 - `tree-sitter-cli` for generating the parser (`npm install -g tree-sitter-cli`)
-- `mlmd` CLI on PATH (or accessible via `npx`) for LSP features
+- Node.js for the MLMD language server (called via `node dist/bin/mlmd.js lsp`)

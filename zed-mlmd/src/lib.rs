@@ -1,4 +1,4 @@
-use zed_extension_api::{self as zed, Result};
+use zed_extension_api::{self as zed, node_binary_path, Result};
 
 struct MlmdExtension;
 
@@ -12,15 +12,15 @@ impl zed::Extension for MlmdExtension {
         _language_server_id: &zed::LanguageServerId,
         worktree: &zed::Worktree,
     ) -> Result<zed::Command> {
-        let npx = worktree
-            .which("npx")
-            .map_err(|e| format!("failed to locate npx: {e}"))?
-            .ok_or_else(|| "npx not found in PATH — is Node.js installed?".to_string())?;
+        let node = node_binary_path()?;
+        let mlmd_script = format!("{}/dist/bin/mlmd.js", worktree.root_path());
+
+        let env = worktree.shell_env();
 
         Ok(zed::Command {
-            command: npx,
-            args: vec!["mlmd".to_string(), "lsp".to_string()],
-            env: worktree.shell_env(),
+            command: node,
+            args: vec![mlmd_script, "lsp".to_string(), "--stdio".to_string()],
+            env,
         })
     }
 }

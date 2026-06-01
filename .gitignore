@@ -4,7 +4,23 @@ dist/
 *.js.map
 .pnp.*
 .yarn/
-.weave/runtime/
 .weave/
 .test/
 .DS_Store
+.opencode/
+
+# Zed extension (Rust)
+target/
+extension.wasm
+zed-mlmd/grammars/mlmd/src/grammar.json
+zed-mlmd/grammars/mlmd/src/node-types.json
+zed-mlmd/grammars/mlmd/src/parser.c
+zed-mlmd/grammars/mlmd/src/tree_sitter/
+zed-mlmd/grammars/mlmd/*.wasm
+zed-mlmd/grammars/mlmd/binding.gyp
+zed-mlmd/grammars/mlmd/bindings/
+zed-mlmd/grammars/mlmd/build/
+zed-mlmd/grammars/mlmd/node_modules/
+zed-mlmd/grammars/mlmd/Cargo.lock
+zed-mlmd/grammars/.bare-mlmd/
+grammars/

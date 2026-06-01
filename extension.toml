@@ -4,11 +4,11 @@ description = "MLMD neural network DSL — syntax highlighting and LSP"
 version = "0.1.0"
 schema_version = 1
 authors = ["eeveeboo"]
-repository = "https://github.com/eeveeboo/nnml"
+repository = "https://github.com/Eeveeboo/machine-learning-markdown"
 
 [grammars.mlmd]
-repository = "file:///Users/evelyne/src/eeveeboo/nnml/zed-mlmd/grammars/mlmd"
-rev = "HEAD"
+repository = "file:///Users/evelyne/src/eeveeboo/nnml/zed-mlmd/grammars/.bare-mlmd"
+rev = "main"
 
 [language_servers.mlmd-language-server]
 name = "MLMD Language Server"
