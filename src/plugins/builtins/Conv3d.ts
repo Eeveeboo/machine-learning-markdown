@@ -64,9 +64,10 @@ export const Conv3d: BlockPlugin = {
           ? (block.params["padding"] as { value: string }).value
           : undefined) ?? "valid";
       const mainIn = inputVars[0] ?? "x";
+      const safeP = paddingStr.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '\\r');
       return {
         attr: null,
-        forward: `keras.layers.Conv3D(${filters}, ${kernel}, strides=${stride}, padding='${paddingStr}')(${mainIn})`,
+        forward: `keras.layers.Conv3D(${filters}, ${kernel}, strides=${stride}, padding='${safeP}')(${mainIn})`,
       };
     },
 

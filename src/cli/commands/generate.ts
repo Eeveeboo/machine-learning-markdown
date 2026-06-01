@@ -1,5 +1,5 @@
 import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { resolve, dirname, sep } from "node:path";
 import type { Command } from "commander";
 import { tokenize } from "../../parser/tokenizer.js";
 import { parse } from "../../parser/parser.js";
@@ -72,6 +72,10 @@ export function registerGenerateCommand(program: Command): void {
 
         for (const generated of files) {
           const filePath = resolve(outDir, generated.path);
+          if (!filePath.startsWith(outDir + sep) && filePath !== outDir) {
+            console.error(`generate: refusing to write outside output directory: ${generated.path}`);
+            process.exit(1);
+          }
           mkdirSync(dirname(filePath), { recursive: true });
           writeFileSync(filePath, generated.content, "utf-8");
           console.log(`generated: ${filePath}`);

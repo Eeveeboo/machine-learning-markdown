@@ -2,7 +2,7 @@ import { mkdirSync, cpSync, readFileSync, writeFileSync, existsSync } from "node
 import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import type { Command } from "commander";
 
 function findProjectRoot(metaUrl: string): string {
@@ -18,10 +18,6 @@ function findProjectRoot(metaUrl: string): string {
 
 const PROJECT_ROOT = findProjectRoot(import.meta.url);
 
-function zedLanguagesDir(): string {
-  return resolve(homedir(), ".config/zed/languages");
-}
-
 function vscodeExtensionsDir(): string {
   return resolve(homedir(), ".vscode/extensions");
 }
@@ -33,7 +29,7 @@ export function registerInstallCommand(program: Command): void {
 
   install
     .command("zed")
-    .description("Install Zed language support (~/.config/zed/languages/mlmd/)")
+    .description("Install MLMD as a Zed dev extension")
     .action(() => installZed());
 
   install
@@ -43,17 +39,33 @@ export function registerInstallCommand(program: Command): void {
 }
 
 function installZed(): void {
-  const srcDir = resolve(PROJECT_ROOT, "languages/mlmd");
-  const destDir = resolve(zedLanguagesDir(), "mlmd");
+  const extDir = resolve(PROJECT_ROOT, "zed-mlmd");
+  const grammarDir = resolve(extDir, "grammars/mlmd");
 
-  if (!existsSync(srcDir)) {
-    console.error("error: languages/mlmd/ not found");
+  if (!existsSync(extDir)) {
+    console.error("error: zed-mlmd/ not found at " + extDir);
     process.exit(1);
   }
 
-  mkdirSync(zedLanguagesDir(), { recursive: true });
-  cpSync(srcDir, destDir, { recursive: true, force: true });
-  console.log(`installed zed config to ${destDir}`);
+  // 1. Install grammar dependencies
+  console.log("installing grammar dependencies...");
+  execFileSync("npm", ["install"], { cwd: grammarDir, stdio: "inherit" });
+
+  // 2. Generate parser from grammar.js
+  const treeSitterCmd = existsSync(join(grammarDir, "node_modules/.bin/tree-sitter"))
+    ? join(grammarDir, "node_modules/.bin/tree-sitter")
+    : "tree-sitter";
+
+  console.log("generating parser...");
+  execFileSync(treeSitterCmd, ["generate"], { cwd: grammarDir, stdio: "inherit" });
+
+  console.log("\n\x1b[32m✓\x1b[0m Extension prepared at: \x1b[1m" + extDir + "\x1b[0m\n");
+  console.log("To install in Zed:");
+  console.log("  1. Open Zed");
+  console.log("  2. Press \x1b[1mCmd+Shift+X\x1b[0m (or \x1b[1mCtrl+Shift+X\x1b[0m on Linux)");
+  console.log("  3. Click \x1b[1mInstall Dev Extension\x1b[0m (top-right)");
+  console.log('  4. Select the directory: \x1b[1m' + extDir + '\x1b[0m');
+  console.log("  5. Open any \x1b[1m.mlmd\x1b[0m file — highlighting + LSP will activate\n");
 }
 
 function installVscode(): void {
@@ -98,10 +110,10 @@ function installVscode(): void {
 
   // 5. Install deps and build
   console.log("installing dependencies...");
-  execSync("npm install", { cwd: destDir, stdio: "inherit" });
+  execFileSync("npm", ["install"], { cwd: destDir, stdio: "inherit" });
 
   console.log("building extension...");
-  execSync("npm run build", { cwd: destDir, stdio: "inherit" });
+  execFileSync("npm", ["run", "build"], { cwd: destDir, stdio: "inherit" });
 
   console.log(`installed vs code extension to ${destDir}`);
   console.log("reload VS Code to activate (Developer: Reload Window)");

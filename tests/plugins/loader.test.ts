@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
-import * as os from "node:os";
 import * as path from "node:path";
 import { loadPlugins } from "../../src/plugins/loader.js";
 import { registry } from "../../src/blocks/registry.js";
@@ -8,7 +7,10 @@ import { registry } from "../../src/blocks/registry.js";
 let tmpDir: string;
 
 beforeEach(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "nnml-plugin-test-"));
+  // Use a temp dir inside the project root so the directory-containment check passes
+  const base = path.join(process.cwd(), ".test-plugin-tmp");
+  fs.mkdirSync(base, { recursive: true });
+  tmpDir = fs.mkdtempSync(path.join(base, "nnml-plugin-test-"));
   registry.clear();
 });
 

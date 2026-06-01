@@ -2,9 +2,18 @@
  * Low-level SVG string builder — no DOM dependency.
  */
 
+function escapeXml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function attrs(opts: Record<string, string> = {}): string {
   return Object.entries(opts)
-    .map(([k, v]) => ` ${k}="${v}"`)
+    .map(([k, v]) => ` ${k}="${escapeXml(v)}"`)
     .join('');
 }
 
@@ -65,7 +74,7 @@ export class SvgBuilder {
   }
 
   text(x: number, y: number, content: string, opts?: Record<string, string>): this {
-    this._elements.push(`<text x="${x}" y="${y}"${attrs(opts)}>${content}</text>`);
+    this._elements.push(`<text x="${x}" y="${y}"${attrs(opts)}>${escapeXml(content)}</text>`);
     return this;
   }
 
@@ -122,9 +131,9 @@ export class SvgBuilder {
   }
 
   private _renderGroup(): string {
-    const transformAttr = this._transform ? ` transform="${this._transform}"` : '';
+    const transformAttr = this._transform ? ` transform="${escapeXml(this._transform)}"` : '';
     const inner = this._render();
-    return `<g id="${this._groupId}"${transformAttr}>\n${inner}\n</g>`;
+    return `<g id="${escapeXml(this._groupId ?? '')}"${transformAttr}>\n${inner}\n</g>`;
   }
 
   toString(): string {

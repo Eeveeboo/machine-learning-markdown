@@ -34,9 +34,16 @@ function isBlockPlugin(value: unknown): value is BlockPlugin {
 export async function loadPlugins(dir: string): Promise<Map<string, BlockPlugin>> {
   const result = new Map<string, BlockPlugin>();
 
+  const resolvedCwd = path.resolve(process.cwd());
+  const resolvedDir = path.resolve(dir);
+  if (!resolvedDir.startsWith(resolvedCwd + path.sep) && resolvedDir !== resolvedCwd) {
+    console.warn(`[plugin-loader] Refusing to load plugins from outside project root: ${path.relative(resolvedCwd, resolvedDir)}`);
+    return result;
+  }
+
   let entries: fs.Dirent[];
   try {
-    entries = fs.readdirSync(dir, { withFileTypes: true });
+    entries = fs.readdirSync(resolvedDir, { withFileTypes: true });
   } catch {
     return result;
   }
@@ -46,11 +53,17 @@ export async function loadPlugins(dir: string): Promise<Map<string, BlockPlugin>
 
   for (const ext of EXTENSIONS) {
     for (const entry of entries) {
+      if (entry.isSymbolicLink()) {
+        console.warn(`[plugin-loader] Skipping symlink: ${path.relative(resolvedDir, path.resolve(resolvedDir, entry.name))}`);
+        continue;
+      }
       if (!entry.isFile()) continue;
       if (!entry.name.endsWith(ext)) continue;
       const baseName = entry.name.slice(0, -ext.length);
       if (!candidates.has(baseName)) {
-        candidates.set(baseName, path.resolve(dir, entry.name));
+        const resolvedFile = path.resolve(resolvedDir, entry.name);
+        if (!resolvedFile.startsWith(resolvedDir + path.sep)) continue;
+        candidates.set(baseName, resolvedFile);
       }
     }
   }
@@ -60,7 +73,7 @@ export async function loadPlugins(dir: string): Promise<Map<string, BlockPlugin>
     try {
       mod = await import(filePath) as Record<string, unknown>;
     } catch (err) {
-      console.warn(`[plugin-loader] Failed to import ${filePath}: ${(err as Error).message}`);
+      console.warn(`[plugin-loader] Failed to import ${path.relative(process.cwd(), filePath)}: ${(err as Error).message}`);
       continue;
     }
 
@@ -70,7 +83,7 @@ export async function loadPlugins(dir: string): Promise<Map<string, BlockPlugin>
       : mod["default"];
 
     if (!isBlockPlugin(candidate)) {
-      console.warn(`[plugin-loader] ${filePath} does not export a valid BlockPlugin — skipping`);
+      console.warn(`[plugin-loader] ${path.relative(process.cwd(), filePath)} does not export a valid BlockPlugin — skipping`);
       continue;
     }
 

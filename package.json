@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "A CLI tool for describing neural network architectures as a DSL",
   "type": "module",
+  "packageManager": "npm@10.9.0",
   "main": "dist/src/index.js",
   "exports": {
     ".": {
@@ -25,14 +26,14 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "commander": "^12.0.0",
-    "vscode-languageserver": "^9.0.1",
-    "vscode-languageserver-textdocument": "^1.0.12"
+    "commander": "^12.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "tsup": "^8.0.0",
     "typescript": "^5.4.0",
-    "vitest": "^1.6.0"
+    "vitest": "^1.6.0",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.12"
   }
 }

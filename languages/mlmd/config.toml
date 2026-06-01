@@ -1,6 +1,7 @@
 name = "MLMD"
-grammar = "mlmd"
+# grammar = "mlmd"  # Removed: tree-sitter grammar not available in this install path
+# For full Zed support (syntax highlighting + LSP), use the zed-mlmd dev extension instead.
 path_suffixes = ["mlmd"]
 
 [language_servers]
-mlmd = { command = "mlmd", args = ["lsp"] }
+mlmd = { command = "npx", args = ["mlmd", "lsp"] }
