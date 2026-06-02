@@ -227,6 +227,100 @@ describe("pytorch codegen target", () => {
     });
   });
 
+  describe("forward parameters (multi-input support)", () => {
+    it("single unnamed input uses forward(self, x)", () => {
+      const blocks = [makeBlock("b0", "Input"), makeBlock("b1", "Output")];
+      const edges: Edge[] = [{ from: "b0", to: "b1" }];
+      const content = target!.generate(makeGraph(blocks, edges), new Map())[0].content;
+      expect(content).toContain("def forward(self, x):");
+    });
+
+    it("single named input uses tensorName as param", () => {
+      const blocks = [
+        makeBlock("b0", "Input", {}, [], [[1, 64]]),
+        makeBlock("b1", "Linear", { out_features: num(32) }, [[1, 64]], [[1, 32]]),
+        makeBlock("b2", "Output", {}, [[1, 32]], []),
+      ];
+      const edges: Edge[] = [
+        { from: "b0", to: "b1", tensorName: "features" },
+        { from: "b1", to: "b2" },
+      ];
+      const content = target!.generate(makeGraph(blocks, edges), new Map())[0].content;
+      expect(content).toContain("def forward(self, features):");
+      expect(content).toContain("self.b1(features)");
+    });
+
+    it("multiple named inputs (Attention-style)", () => {
+      const blocks = [
+        makeBlock("b_q", "Input"),
+        makeBlock("b_k", "Input"),
+        makeBlock("b_v", "Input"),
+        makeBlock("b_linear_q", "Linear", { out_features: num(64) }, [[1, 64]], [[1, 64]]),
+        makeBlock("b_linear_k", "Linear", { out_features: num(64) }, [[1, 64]], [[1, 64]]),
+        makeBlock("b_linear_v", "Linear", { out_features: num(64) }, [[1, 64]], [[1, 64]]),
+        makeBlock("b_add", "Add", {}, [[1, 64], [1, 64]], [[1, 64]]),
+        makeBlock("b_out", "Output"),
+      ];
+      const edges: Edge[] = [
+        { from: "b_q", to: "b_linear_q", tensorName: "query" },
+        { from: "b_k", to: "b_linear_k", tensorName: "key" },
+        { from: "b_v", to: "b_linear_v", tensorName: "value" },
+        { from: "b_linear_q", to: "b_add" },
+        { from: "b_linear_k", to: "b_add" },
+        { from: "b_linear_v", to: "b_add" },
+        { from: "b_add", to: "b_out" },
+      ];
+      const content = target!.generate(makeGraph(blocks, edges), new Map())[0].content;
+      expect(content).toContain("def forward(self, query, key, value):");
+      expect(content).toContain("self.b_linear_q(query)");
+      expect(content).toContain("self.b_linear_k(key)");
+      expect(content).toContain("self.b_linear_v(value)");
+    });
+
+    it("multiple unnamed inputs use x, x2, x3", () => {
+      const blocks = [
+        makeBlock("b0", "Input"),
+        makeBlock("b1", "Input"),
+        makeBlock("b2", "Input"),
+        makeBlock("b3", "Output"),
+      ];
+      const edges: Edge[] = [
+        { from: "b0", to: "b3" },
+        { from: "b1", to: "b3" },
+        { from: "b2", to: "b3" },
+      ];
+      const content = target!.generate(makeGraph(blocks, edges), new Map())[0].content;
+      expect(content).toContain("def forward(self, x, x2, x3):");
+    });
+
+    it("mixed named and unnamed inputs", () => {
+      const blocks = [
+        makeBlock("b0", "Input"),
+        makeBlock("b1", "Input"),
+        makeBlock("b2", "Input"),
+        makeBlock("b3", "Output"),
+      ];
+      const edges: Edge[] = [
+        { from: "b0", to: "b3", tensorName: "data" },
+        { from: "b1", to: "b3" },
+        { from: "b2", to: "b3" },
+      ];
+      const content = target!.generate(makeGraph(blocks, edges), new Map())[0].content;
+      expect(content).toContain("def forward(self, data, x, x2):");
+    });
+
+    it("emits shape comments for input params", () => {
+      const blocks = [
+        makeBlock("b0", "Input", {}, [], [[1, 3, 224, 224]]),
+        makeBlock("b1", "Output"),
+      ];
+      const edges: Edge[] = [{ from: "b0", to: "b1" }];
+      const content = target!.generate(makeGraph(blocks, edges), new Map())[0].content;
+      expect(content).toContain("# x: input");
+      expect(content).toContain("1, 3, 224, 224");
+    });
+  });
+
   describe("shape annotations", () => {
     it("includes shape comments in forward()", () => {
       const blocks = [

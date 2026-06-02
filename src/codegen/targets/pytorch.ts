@@ -55,13 +55,31 @@ export function generatePytorch(graph: Graph, _registry: Map<string, BlockDef>):
     }
   }
 
+  // Collect Input blocks → forward parameter names (like candle codegen)
+  const inputParams = new Map<string, string>(); // blockId → paramName
+  const forwardParams: string[] = [];
+  let unnamedCount = 0;
+
+  for (const b of sorted) {
+    if (b.type !== "Input") continue;
+    const named = namedOutputs.get(b.id);
+    if (named) {
+      inputParams.set(b.id, named);
+      forwardParams.push(named);
+    } else {
+      unnamedCount++;
+      const name = unnamedCount === 1 ? "x" : `x${unnamedCount}`;
+      inputParams.set(b.id, name);
+      forwardParams.push(name);
+    }
+  }
+
   // forward lines
   const forwardLines: string[] = [];
 
   // Track what variable name each block's output is stored in
   const blockOutputVar = new Map<string, string>(); // blockId → python var name
 
-  // Assign initial "x" to first block's output
   let varCounter = 0;
   const freshVar = () => {
     varCounter++;
@@ -75,14 +93,11 @@ export function generatePytorch(graph: Graph, _registry: Map<string, BlockDef>):
     const inputVars: string[] = info.inputs.map((inId) => blockOutputVar.get(inId) ?? "x");
 
     if (b.type === "Input") {
-      const named = namedOutputs.get(b.id);
-      const outVar = named ?? "x";
-      blockOutputVar.set(b.id, outVar);
+      const paramName = inputParams.get(b.id) ?? "x";
+      blockOutputVar.set(b.id, paramName);
       const inShapeComment = shapeComment(b.outputShapes);
-      if (named) {
-        forwardLines.push(`        ${named} = x${inShapeComment !== "" ? "  " + inShapeComment.trim() : ""}`);
-      } else {
-        forwardLines.push(`        # x: input${inShapeComment}`);
+      if (inShapeComment) {
+        forwardLines.push(`        # ${paramName}: input${inShapeComment}`);
       }
       continue;
     }
@@ -117,6 +132,12 @@ export function generatePytorch(graph: Graph, _registry: Map<string, BlockDef>):
   // Class name from graph groups or default
   const className = graph.groups[0]?.path[0] ?? "Model";
 
+  // Forward signature with proper multi-input params
+  const forwardSig =
+    forwardParams.length > 0
+      ? forwardParams.join(", ")
+      : "x";
+
   const lines: string[] = [
     `import torch`,
     `import torch.nn as nn`,
@@ -128,7 +149,7 @@ export function generatePytorch(graph: Graph, _registry: Map<string, BlockDef>):
     `        super().__init__()`,
     ...initLines,
     ``,
-    `    def forward(self, x):`,
+    `    def forward(self, ${forwardSig}):`,
     ...forwardLines,
   ];
 
