@@ -83,14 +83,14 @@ describe("candle codegen — known gaps", () => {
     expect(content).toContain("/* AvgPool2d not directly supported in candle_nn::ops */");
   });
 
-  it("RNN is typed as candle_nn::Linear (placeholder)", () => {
+  it("RNN generates attr init with 'not natively supported' comment", () => {
     const content = generateForBlock(
       "RNN",
       { hidden_size: num(64) },
       [1, 10, 32],
       [1, 10, 64],
     );
-    // RNN uses Linear as a placeholder in candle; check type annotation in struct field
-    expect(content).toContain("b1: candle_nn::Linear");
+    expect(content).toContain("/* RNN not natively supported in candle_nn */");
+    expect(content).toContain("candle_nn::linear");
   });
 });

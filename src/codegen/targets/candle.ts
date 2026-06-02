@@ -8,6 +8,11 @@ import { getBlockCodegenWithFallback } from "../block-codegen.js";
 // Ensure all built-in block codegen functions are registered before any codegen runs
 import "../../plugins/builtins/index.js";
 
+/** Convert PascalCase or TitleCase field name to snake_case Rust param name */
+function toSnakeCase(name: string): string {
+  return name.charAt(0).toLowerCase() + name.slice(1);
+}
+
 // ---------------------------------------------------------------------------
 // Code generation
 // ---------------------------------------------------------------------------
@@ -27,6 +32,7 @@ export function generateCandle(graph: Graph, _registry: Map<string, BlockDef>): 
   interface StructField {
     fieldName: string;
     fieldType: string;
+    initExpr: string;
   }
 
   const fields: StructField[] = [];
@@ -40,6 +46,7 @@ export function generateCandle(graph: Graph, _registry: Map<string, BlockDef>): 
       fields.push({
         fieldName: result.attr.name,
         fieldType: result.attr.typeAnnotation ?? "/* unknown */",
+        initExpr: result.attr.init,
       });
     }
   }
@@ -49,16 +56,13 @@ export function generateCandle(graph: Graph, _registry: Map<string, BlockDef>): 
   const forwardParams: string[] = [];
   let unnamedCount = 0;
 
-  // Use namedOutputs for tensor names, but also need to handle unnamed Inputs
   for (const b of sorted) {
     if (b.type !== "Input") continue;
     const named = namedOutputs.get(b.id);
     if (named) {
-      // Use the tensor name from the edge as-is
       inputParams.set(b.id, named);
       forwardParams.push(`${named}: &Tensor`);
     } else {
-      // Generate unique name: x, x2, x3, ...
       unnamedCount++;
       const name = unnamedCount === 1 ? "x" : `x${unnamedCount}`;
       inputParams.set(b.id, name);
@@ -81,7 +85,6 @@ export function generateCandle(graph: Graph, _registry: Map<string, BlockDef>): 
     const inputVars: string[] = info.inputs.map((inId) => blockOutputVar.get(inId) ?? "x");
 
     if (b.type === "Input") {
-      // Use the param name from inputParams instead of fallback "x"
       blockOutputVar.set(b.id, inputParams.get(b.id) ?? "x");
       continue;
     }
@@ -113,9 +116,19 @@ export function generateCandle(graph: Graph, _registry: Map<string, BlockDef>): 
 
   // Struct fields
   const structFieldLines = fields.map((f) => `    ${f.fieldName}: ${f.fieldType},`);
-  // Constructor params and body
-  const ctorParams = fields.map((f) => `        ${f.fieldName}: ${f.fieldType},`);
-  const ctorFieldAssignments = fields.map((f) => `            ${f.fieldName},`);
+
+  // Constructors
+  // -- with_scopes: custom &str param per field for weight-loading scope names
+  const scopeParams = fields.map((f) => `        ${toSnakeCase(f.fieldName)}: &str,`);
+  const withScopesInitLines = fields.map((f) => {
+    const scopeParam = toSnakeCase(f.fieldName);
+    // Replace vb.pp("FieldName") from plugin init with weights.pp(param) reference
+    const expr = f.initExpr.replace(`vb.pp("${f.fieldName}")`, `weights.pp(${scopeParam})`);
+    return `        let ${f.fieldName} = ${expr};`;
+  });
+  const newOkFields = fields.map((f) => `            ${f.fieldName},`);
+  // -- new: convenience that auto-generates scope names from field names
+  const defaultScopeArgs = fields.map((f) => `        "${f.fieldName}",`);
 
   // Forward signature
   const forwardSignature =
@@ -129,19 +142,30 @@ export function generateCandle(graph: Graph, _registry: Map<string, BlockDef>): 
 
   const lines: string[] = [
     `use candle_core::{Result, Tensor};`,
-    `use candle_nn::Module;`,
+    `use candle_nn::{Module, VarBuilder};`,
     ``,
     `pub struct ${className} {`,
     ...structFieldLines,
     `}`,
     ``,
     `impl ${className} {`,
-    `    pub fn new(`,
-    ...ctorParams,
-    `    ) -> Self {`,
-    `        Self {`,
-    ...ctorFieldAssignments,
-    `        }`,
+    `    /// Create model with auto-generated weight scope names.`,
+    `    /// Use [${className}::with_scopes] for custom scope names.`,
+    `    pub fn new(weights: VarBuilder) -> Result<Self> {`,
+    `        Self::with_scopes(weights,`,
+    ...defaultScopeArgs,
+    `        )`,
+    `    }`,
+    ``,
+    `    /// Create model with custom weight-loading scope names.`,
+    `    pub fn with_scopes(`,
+    `        weights: VarBuilder,`,
+    ...scopeParams,
+    `    ) -> Result<Self> {`,
+    ...withScopesInitLines,
+    `        Ok(Self {`,
+    ...newOkFields,
+    `        })`,
     `    }`,
     ``,
     `    pub fn forward(&self,`,

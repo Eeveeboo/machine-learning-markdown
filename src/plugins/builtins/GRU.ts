@@ -65,7 +65,7 @@ export const GRU: BlockPlugin = {
       return {
         attr: {
           name: block.id,
-          init: "",
+          init: `candle_nn::gru(${inputSize}, ${hidden}, candle_nn::GRUConfig::default(), vb.pp("${block.id}"))?`,
           typeAnnotation: "candle_nn::GRU",
         },
         forward: `{ let states = candle_nn::RNN::seq(&self.${block.id}, &${mainIn})?; candle_nn::RNN::states_to_tensor(&self.${block.id}, &states)? }`,

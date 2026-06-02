@@ -55,6 +55,6 @@ Output
     expect(files.length).toBeGreaterThan(0);
     const code = files.map(f => f.content).join("\n");
     expect(code).toContain("use candle_core");
-    expect(code).toContain("candle_nn::Linear");
+    expect(code).toContain("candle_nn::linear");
   });
 });
