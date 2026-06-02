@@ -62,7 +62,7 @@ export const Embedding: BlockPlugin = {
       return {
         attr: {
           name: block.id,
-          init: `candle_nn::embedding(${vocab}, ${dim}, vb.pp("${block.id}"))?`,
+          init: "",
           typeAnnotation: "candle_nn::Embedding",
         },
         forward: `self.${block.id}.forward(&${mainIn})?`,

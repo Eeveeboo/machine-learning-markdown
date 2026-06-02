@@ -1,5 +1,5 @@
 use candle_core::{Result, Tensor};
-use candle_nn::{Module, VarBuilder};
+use candle_nn::Module;
 
 pub struct Attention {
     Linear_0: candle_nn::Linear,
@@ -9,20 +9,25 @@ pub struct Attention {
 }
 
 impl Attention {
-    pub fn new(vb: VarBuilder) -> Result<Self> {
-        let Linear_0 = candle_nn::linear(0, 64, vb.pp("Linear_0"))?;
-        let Linear_1 = candle_nn::linear(0, 64, vb.pp("Linear_1"))?;
-        let Linear_2 = candle_nn::linear(0, 64, vb.pp("Linear_2"))?;
-        let Linear_3 = candle_nn::linear(0, 64, vb.pp("Linear_3"))?;
-        Ok(Self {
+    pub fn new(
+        Linear_0: candle_nn::Linear,
+        Linear_1: candle_nn::Linear,
+        Linear_2: candle_nn::Linear,
+        Linear_3: candle_nn::Linear,
+    ) -> Self {
+        Self {
             Linear_0,
             Linear_1,
             Linear_2,
             Linear_3,
-        })
+        }
     }
 
-    pub fn forward(&self, x: &Tensor) -> Result<Tensor> {
+    pub fn forward(&self,
+        query: &Tensor,
+        key: &Tensor,
+        value: &Tensor
+    ) -> Result<Tensor> {
         let q_proj = self.Linear_0.forward(&query)?;
         let k_proj = self.Linear_1.forward(&key)?;
         let v_proj = self.Linear_2.forward(&value)?;

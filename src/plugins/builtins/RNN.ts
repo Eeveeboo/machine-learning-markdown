@@ -67,7 +67,7 @@ export const RNN: BlockPlugin = {
         attr: {
           name: block.id,
           // candle does not have a built-in vanilla RNN; emit a placeholder
-          init: `/* RNN not natively supported in candle_nn */ candle_nn::linear(${inputSize + hidden}, ${hidden}, vb.pp("${block.id}"))?`,
+          init: "",
           typeAnnotation: "candle_nn::Linear",
         },
         forward: `self.${block.id}.forward(&${mainIn})?`,

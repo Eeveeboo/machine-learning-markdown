@@ -61,7 +61,7 @@ export const Linear: BlockPlugin = {
       return {
         attr: {
           name: block.id,
-          init: `candle_nn::linear(${inF}, ${outF}, vb.pp("${block.id}"))?`,
+          init: "",
           typeAnnotation: "candle_nn::Linear",
         },
         forward: `self.${block.id}.forward(&${mainIn})?`,

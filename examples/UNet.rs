@@ -1,5 +1,5 @@
 use candle_core::{Result, Tensor};
-use candle_nn::{Module, VarBuilder};
+use candle_nn::Module;
 
 pub struct UNet {
     Conv2d_0: candle_nn::Conv2d,
@@ -11,24 +11,27 @@ pub struct UNet {
 }
 
 impl UNet {
-    pub fn new(vb: VarBuilder) -> Result<Self> {
-        let Conv2d_0 = candle_nn::conv2d(0, 32, 3, candle_nn::Conv2dConfig { stride: 1, padding: 1, ..Default::default() }, vb.pp("Conv2d_0"))?;
-        let Conv2d_1 = candle_nn::conv2d(0, 64, 3, candle_nn::Conv2dConfig { stride: 1, padding: 1, ..Default::default() }, vb.pp("Conv2d_1"))?;
-        let Conv2d_2 = candle_nn::conv2d(0, 128, 3, candle_nn::Conv2dConfig { stride: 1, padding: 1, ..Default::default() }, vb.pp("Conv2d_2"))?;
-        let Conv2d_3 = candle_nn::conv2d(0, 64, 3, candle_nn::Conv2dConfig { stride: 1, padding: 1, ..Default::default() }, vb.pp("Conv2d_3"))?;
-        let Conv2d_4 = candle_nn::conv2d(0, 32, 3, candle_nn::Conv2dConfig { stride: 1, padding: 1, ..Default::default() }, vb.pp("Conv2d_4"))?;
-        let Conv2d_5 = candle_nn::conv2d(0, 1, 1, candle_nn::Conv2dConfig { stride: 1, padding: 0, ..Default::default() }, vb.pp("Conv2d_5"))?;
-        Ok(Self {
+    pub fn new(
+        Conv2d_0: candle_nn::Conv2d,
+        Conv2d_1: candle_nn::Conv2d,
+        Conv2d_2: candle_nn::Conv2d,
+        Conv2d_3: candle_nn::Conv2d,
+        Conv2d_4: candle_nn::Conv2d,
+        Conv2d_5: candle_nn::Conv2d,
+    ) -> Self {
+        Self {
             Conv2d_0,
             Conv2d_1,
             Conv2d_2,
             Conv2d_3,
             Conv2d_4,
             Conv2d_5,
-        })
+        }
     }
 
-    pub fn forward(&self, x: &Tensor) -> Result<Tensor> {
+    pub fn forward(&self,
+        x: &Tensor
+    ) -> Result<Tensor> {
         let x = self.Conv2d_0.forward(&x)?;
         let enc1_skip = x.relu()?;
         let x = candle_nn::ops::max_pool2d(&enc1_skip, 2, 2)?;

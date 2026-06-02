@@ -27,7 +27,6 @@ export function generateCandle(graph: Graph, _registry: Map<string, BlockDef>): 
   interface StructField {
     fieldName: string;
     fieldType: string;
-    initExpr: string;
   }
 
   const fields: StructField[] = [];
@@ -41,8 +40,29 @@ export function generateCandle(graph: Graph, _registry: Map<string, BlockDef>): 
       fields.push({
         fieldName: result.attr.name,
         fieldType: result.attr.typeAnnotation ?? "/* unknown */",
-        initExpr: result.attr.init,
       });
+    }
+  }
+
+  // Collect Input blocks → forward parameter names
+  const inputParams = new Map<string, string>(); // blockId → paramName
+  const forwardParams: string[] = [];
+  let unnamedCount = 0;
+
+  // Use namedOutputs for tensor names, but also need to handle unnamed Inputs
+  for (const b of sorted) {
+    if (b.type !== "Input") continue;
+    const named = namedOutputs.get(b.id);
+    if (named) {
+      // Use the tensor name from the edge as-is
+      inputParams.set(b.id, named);
+      forwardParams.push(`${named}: &Tensor`);
+    } else {
+      // Generate unique name: x, x2, x3, ...
+      unnamedCount++;
+      const name = unnamedCount === 1 ? "x" : `x${unnamedCount}`;
+      inputParams.set(b.id, name);
+      forwardParams.push(`${name}: &Tensor`);
     }
   }
 
@@ -61,8 +81,8 @@ export function generateCandle(graph: Graph, _registry: Map<string, BlockDef>): 
     const inputVars: string[] = info.inputs.map((inId) => blockOutputVar.get(inId) ?? "x");
 
     if (b.type === "Input") {
-      const named = namedOutputs.get(b.id);
-      blockOutputVar.set(b.id, named ?? "x");
+      // Use the param name from inputParams instead of fallback "x"
+      blockOutputVar.set(b.id, inputParams.get(b.id) ?? "x");
       continue;
     }
 
@@ -93,27 +113,40 @@ export function generateCandle(graph: Graph, _registry: Map<string, BlockDef>): 
 
   // Struct fields
   const structFieldLines = fields.map((f) => `    ${f.fieldName}: ${f.fieldType},`);
-  // new fn
-  const newInitLines = fields.map((f) => `        let ${f.fieldName} = ${f.initExpr};`);
-  const newOkFields = fields.map((f) => `            ${f.fieldName},`);
+  // Constructor params and body
+  const ctorParams = fields.map((f) => `        ${f.fieldName}: ${f.fieldType},`);
+  const ctorFieldAssignments = fields.map((f) => `            ${f.fieldName},`);
+
+  // Forward signature
+  const forwardSignature =
+    forwardParams.length > 0
+      ? forwardParams.join(",\n        ")
+      : "// no inputs defined";
+  const forwardParamBlock =
+    forwardParams.length > 0
+      ? `        ${forwardSignature}`
+      : "        // no inputs defined";
 
   const lines: string[] = [
     `use candle_core::{Result, Tensor};`,
-    `use candle_nn::{Module, VarBuilder};`,
+    `use candle_nn::Module;`,
     ``,
     `pub struct ${className} {`,
     ...structFieldLines,
     `}`,
     ``,
     `impl ${className} {`,
-    `    pub fn new(vb: VarBuilder) -> Result<Self> {`,
-    ...newInitLines,
-    `        Ok(Self {`,
-    ...newOkFields,
-    `        })`,
+    `    pub fn new(`,
+    ...ctorParams,
+    `    ) -> Self {`,
+    `        Self {`,
+    ...ctorFieldAssignments,
+    `        }`,
     `    }`,
     ``,
-    `    pub fn forward(&self, x: &Tensor) -> Result<Tensor> {`,
+    `    pub fn forward(&self,`,
+    forwardParamBlock,
+    `    ) -> Result<Tensor> {`,
     ...forwardLines,
     `    }`,
     `}`,

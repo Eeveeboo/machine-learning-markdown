@@ -45,7 +45,7 @@ export const GroupNorm: BlockPlugin = {
       return {
         attr: {
           name: block.id,
-          init: `candle_nn::group_norm(${groups}, ${channels}, 1e-5, vb.pp("${block.id}"))?`,
+          init: "",
           typeAnnotation: "candle_nn::GroupNorm",
         },
         forward: `self.${block.id}.forward(&${mainIn})?`,

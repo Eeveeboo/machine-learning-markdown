@@ -54,7 +54,7 @@ export const InstanceNorm: BlockPlugin = {
       return {
         attr: {
           name: block.id,
-          init: `candle_nn::batch_norm(${features}, 1e-5, vb.pp("${block.id}"))?`,
+          init: "",
           typeAnnotation: "candle_nn::BatchNorm",
         },
         forward: `self.${block.id}.forward(&${mainIn})?`,

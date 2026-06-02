@@ -72,23 +72,32 @@ describe("candle codegen target", () => {
       const { path, content } = files[0];
       expect(path).toBe("LeNet.rs");
 
-      // imports
+      // imports — VarBuilder removed, Module stays
       expect(content).toContain("use candle_core");
-      expect(content).toContain("use candle_nn");
+      expect(content).toContain("use candle_nn::Module;");
+      expect(content).not.toContain("VarBuilder");
 
       // struct
       expect(content).toContain("pub struct LeNet");
 
-      // new fn
-      expect(content).toContain("pub fn new(vb: VarBuilder) -> Result<Self>");
-      expect(content).toContain(`candle_nn::conv2d(1, 6, 5`);
-      expect(content).toContain(`candle_nn::conv2d(6, 16, 5`);
-      expect(content).toContain(`candle_nn::linear(256, 120`);
-      expect(content).toContain(`candle_nn::linear(120, 84`);
-      expect(content).toContain(`candle_nn::linear(84, 10`);
+      // new fn — typed constructor, no VarBuilder
+      expect(content).toContain("pub fn new(");
+      expect(content).toContain("block_1: candle_nn::Conv2d,");
+      expect(content).toContain("block_4: candle_nn::Conv2d,");
+      expect(content).toContain("block_8: candle_nn::Linear,");
+      expect(content).toContain("block_10: candle_nn::Linear,");
+      expect(content).toContain("block_12: candle_nn::Linear,");
+      expect(content).toContain(") -> Self {");
+      expect(content).toContain("Self {");
 
-      // forward fn
-      expect(content).toContain("pub fn forward(&self, x: &Tensor) -> Result<Tensor>");
+      // no init expressions remain in output
+      expect(content).not.toContain("candle_nn::conv2d(");
+      expect(content).not.toContain("candle_nn::linear(");
+
+      // forward fn — typed input param
+      expect(content).toContain("pub fn forward(&self,");
+      expect(content).toContain("x: &Tensor");
+      expect(content).toContain(") -> Result<Tensor>");
       expect(content).toContain(".relu()");
       expect(content).toContain("flatten_from(1)");
       expect(content).toContain("Ok(x)");
@@ -104,7 +113,8 @@ describe("candle codegen target", () => {
       ];
       const edges: Edge[] = [{ from: "b0", to: "b1" }, { from: "b1", to: "b2" }];
       const content = target!.generate(makeGraph(blocks, edges), new Map())[0].content;
-      expect(content).toContain("candle_nn::Dropout::new(0.3)");
+      // Dropout struct field has type candle_nn::Dropout
+      expect(content).toContain("candle_nn::Dropout");
     });
 
     it("maps Embedding correctly", () => {
@@ -115,7 +125,8 @@ describe("candle codegen target", () => {
       ];
       const edges: Edge[] = [{ from: "b0", to: "b1" }, { from: "b1", to: "b2" }];
       const content = target!.generate(makeGraph(blocks, edges), new Map())[0].content;
-      expect(content).toContain("candle_nn::embedding(1000, 128");
+      // Embedding struct field has type candle_nn::Embedding
+      expect(content).toContain("candle_nn::Embedding");
     });
 
     it("maps BatchNorm correctly", () => {
@@ -126,7 +137,8 @@ describe("candle codegen target", () => {
       ];
       const edges: Edge[] = [{ from: "b0", to: "b1" }, { from: "b1", to: "b2" }];
       const content = target!.generate(makeGraph(blocks, edges), new Map())[0].content;
-      expect(content).toContain("candle_nn::batch_norm(64");
+      // BatchNorm struct field has type candle_nn::BatchNorm
+      expect(content).toContain("candle_nn::BatchNorm");
     });
 
     it("maps LSTM correctly", () => {
@@ -137,7 +149,8 @@ describe("candle codegen target", () => {
       ];
       const edges: Edge[] = [{ from: "b0", to: "b1" }, { from: "b1", to: "b2" }];
       const content = target!.generate(makeGraph(blocks, edges), new Map())[0].content;
-      expect(content).toContain("candle_nn::lstm(32, 64");
+      // LSTM struct field has type candle_nn::LSTM
+      expect(content).toContain("candle_nn::LSTM");
     });
 
     it("maps Add to tensor addition", () => {
@@ -170,6 +183,131 @@ describe("candle codegen target", () => {
       const edges: Edge[] = [{ from: "b0", to: "b1" }];
       const files = target!.generate(makeGraph(blocks, edges), new Map());
       expect(files[0].content).toContain("pub struct Model");
+    });
+  });
+
+  describe("typed forward parameters", () => {
+    it("single unnamed input uses x: &Tensor", () => {
+      const blocks = [makeBlock("b0", "Input"), makeBlock("b1", "Output")];
+      const edges: Edge[] = [{ from: "b0", to: "b1" }];
+      const content = target!.generate(makeGraph(blocks, edges), new Map())[0].content;
+      expect(content).toContain("x: &Tensor");
+      // Should have exactly one forward param
+      const forwardMatch = content.match(/pub fn forward\(&self,([^)]+)\)/);
+      expect(forwardMatch).not.toBeNull();
+      const params = forwardMatch![1].trim();
+      expect(params.split(",")).toHaveLength(1);
+    });
+
+    it("single named input uses tensorName", () => {
+      const blocks = [makeBlock("b0", "Input", {}, [], [[1, 64]]), makeBlock("b1", "Linear", { out_features: num(32) }, [[1, 64]], [[1, 32]]), makeBlock("b2", "Output", {}, [[1, 32]], [])];
+      const edges: Edge[] = [
+        { from: "b0", to: "b1", tensorName: "features" },
+        { from: "b1", to: "b2" },
+      ];
+      const content = target!.generate(makeGraph(blocks, edges), new Map())[0].content;
+      expect(content).toContain("features: &Tensor");
+      // Forward body should reference features, not x
+      expect(content).toContain("self.b1.forward(&features)?");
+    });
+
+    it("multiple named inputs (Attention-style)", () => {
+      const blocks = [
+        makeBlock("b_q", "Input"),
+        makeBlock("b_k", "Input"),
+        makeBlock("b_v", "Input"),
+        makeBlock("b_concat", "Add", {}, [[1, 64], [1, 64]], [[1, 64]]),
+        makeBlock("b_out", "Output"),
+      ];
+      const edges: Edge[] = [
+        { from: "b_q", to: "b_concat", tensorName: "query" },
+        { from: "b_k", to: "b_concat", tensorName: "key" },
+        { from: "b_v", to: "b_concat", tensorName: "value" },
+        { from: "b_concat", to: "b_out" },
+      ];
+      // Need a simple layer between inputs and concat to verify forward references
+      const blocks2 = [
+        makeBlock("b_q", "Input"),
+        makeBlock("b_k", "Input"),
+        makeBlock("b_v", "Input"),
+        makeBlock("b_linear_q", "Linear", { out_features: num(64) }, [[1, 64]], [[1, 64]]),
+        makeBlock("b_linear_k", "Linear", { out_features: num(64) }, [[1, 64]], [[1, 64]]),
+        makeBlock("b_linear_v", "Linear", { out_features: num(64) }, [[1, 64]], [[1, 64]]),
+        makeBlock("b_add", "Add", {}, [[1, 64], [1, 64]], [[1, 64]]),
+        makeBlock("b_out", "Output"),
+      ];
+      const edges2: Edge[] = [
+        { from: "b_q", to: "b_linear_q", tensorName: "query" },
+        { from: "b_k", to: "b_linear_k", tensorName: "key" },
+        { from: "b_v", to: "b_linear_v", tensorName: "value" },
+        { from: "b_linear_q", to: "b_add" },
+        { from: "b_linear_k", to: "b_add" },
+        { from: "b_linear_v", to: "b_add" },
+        { from: "b_add", to: "b_out" },
+      ];
+      const content = target!.generate(makeGraph(blocks2, edges2), new Map())[0].content;
+      // Forward signature has three named params
+      expect(content).toContain("query: &Tensor");
+      expect(content).toContain("key: &Tensor");
+      expect(content).toContain("value: &Tensor");
+      // Forward body references params (not undefined)
+      expect(content).toContain("self.b_linear_q.forward(&query)?");
+      expect(content).toContain("self.b_linear_k.forward(&key)?");
+      expect(content).toContain("self.b_linear_v.forward(&value)?");
+      // No VarBuilder or vb references
+      expect(content).not.toContain("VarBuilder");
+      expect(content).not.toContain("vb.");
+    });
+
+    it("multiple unnamed inputs use x, x2, x3", () => {
+      const blocks = [
+        makeBlock("b0", "Input"),
+        makeBlock("b1", "Input"),
+        makeBlock("b2", "Input"),
+        makeBlock("b3", "Output"),
+      ];
+      const edges: Edge[] = [
+        { from: "b0", to: "b3" },
+        { from: "b1", to: "b3" },
+        { from: "b2", to: "b3" },
+      ];
+      const content = target!.generate(makeGraph(blocks, edges), new Map())[0].content;
+      expect(content).toContain("x: &Tensor");
+      expect(content).toContain("x2: &Tensor");
+      expect(content).toContain("x3: &Tensor");
+    });
+
+    it("mixed named and unnamed inputs", () => {
+      const blocks = [
+        makeBlock("b0", "Input"),
+        makeBlock("b1", "Input"),
+        makeBlock("b2", "Input"),
+        makeBlock("b3", "Output"),
+      ];
+      const edges: Edge[] = [
+        { from: "b0", to: "b3", tensorName: "data" },
+        { from: "b1", to: "b3" },
+        { from: "b2", to: "b3" },
+      ];
+      const content = target!.generate(makeGraph(blocks, edges), new Map())[0].content;
+      expect(content).toContain("data: &Tensor");
+      expect(content).toContain("x: &Tensor");
+      expect(content).toContain("x2: &Tensor");
+    });
+  });
+
+  describe("no VarBuilder in generated code", () => {
+    it("does not contain VarBuilder or vb references", () => {
+      const blocks = [
+        makeBlock("b0", "Input", {}, [], [[1, 64]]),
+        makeBlock("b1", "Linear", { out_features: num(32) }, [[1, 64]], [[1, 32]]),
+        makeBlock("b2", "Output", {}, [[1, 32]], []),
+      ];
+      const edges: Edge[] = [{ from: "b0", to: "b1" }, { from: "b1", to: "b2" }];
+      const content = target!.generate(makeGraph(blocks, edges), new Map())[0].content;
+      expect(content).not.toContain("VarBuilder");
+      expect(content).not.toContain("vb.");
+      expect(content).not.toContain("vb.pp");
     });
   });
 
@@ -206,13 +344,13 @@ describe("candle codegen target", () => {
       expect(code).toContain("not directly supported");
     });
 
-    it("RNN emits comment about not natively supported and uses candle_nn::linear", () => {
+    it("RNN is typed as candle_nn::Linear (placeholder)", () => {
       const blocks = [makeBlock("r1", "RNN", { hidden_size: num(64) }, [[1, 10, 32]], [[1, 10, 64]])];
       const graph = makeGraph(blocks);
       const files = target!.generate(graph, new Map());
       const code = files.map(f => f.content).join("\n");
-      expect(code).toContain("not natively supported");
-      expect(code).toContain("candle_nn::linear");
+      // RNN is a Linear placeholder in candle; struct field uses candle_nn::Linear type
+      expect(code).toContain("r1: candle_nn::Linear");
     });
   });
 });

@@ -65,7 +65,7 @@ export const LSTM: BlockPlugin = {
       return {
         attr: {
           name: block.id,
-          init: `candle_nn::lstm(${inputSize}, ${hidden}, candle_nn::LSTMConfig::default(), vb.pp("${block.id}"))?`,
+          init: "",
           typeAnnotation: "candle_nn::LSTM",
         },
         forward: `{ let states = candle_nn::RNN::seq(&self.${block.id}, &${mainIn})?; candle_nn::RNN::states_to_tensor(&self.${block.id}, &states)? }`,

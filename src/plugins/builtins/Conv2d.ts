@@ -89,7 +89,7 @@ export const Conv2d: BlockPlugin = {
       return {
         attr: {
           name: block.id,
-          init: `candle_nn::conv2d(${inCh}, ${filters}, ${kernel}, candle_nn::Conv2dConfig { stride: ${stride}, padding: ${padding}, ..Default::default() }, vb.pp("${block.id}"))?`,
+          init: "",
           typeAnnotation: "candle_nn::Conv2d",
         },
         forward: `self.${block.id}.forward(&${mainIn})?`,
