@@ -21,46 +21,41 @@ export const BatchNorm: BlockPlugin = {
   },
 
   codegen: {
-    pytorch(block, inputVars) {
+    pytorch(block, inputVars, outputVars) {
       const inputShape = block.inputShapes[0] ?? [];
-      const mainIn = inputVars[0] ?? "x";
       const dims = inputShape.length;
       let initExpr: string;
       if (dims <= 2) {
         const num = inputShape[inputShape.length - 1] ?? 0;
-        initExpr = `nn.BatchNorm1d(${num})`;
+        initExpr = `self.${block.id} = nn.BatchNorm1d(${num})`;
       } else {
         const num = inputShape[inputShape.length - 3] ?? inputShape[1] ?? 0;
-        initExpr = `nn.BatchNorm2d(${num})`;
+        initExpr = `self.${block.id} = nn.BatchNorm2d(${num})`;
       }
       return {
-        attr: { name: block.id, init: initExpr },
-        forward: `self.${block.id}(${mainIn})`,
+        init: initExpr,
+        forward: `${outputVars[0]} = self.${block.id}(${inputVars[0]})`,
       };
     },
 
-    keras(block, inputVars) {
-      const mainIn = inputVars[0] ?? "x";
+    keras(block, inputVars, outputVars) {
       return {
-        attr: null,
-        forward: `keras.layers.BatchNormalization()(${mainIn})`,
+        forward: `${outputVars[0]} = keras.layers.BatchNormalization()(${inputVars[0]})`,
       };
     },
 
-    candle(block, inputVars) {
+    candle(block, inputVars, outputVars) {
       const inputShape = block.inputShapes[0] ?? [];
-      const mainIn = inputVars[0] ?? "x";
       const features =
         inputShape.length >= 4
           ? (inputShape[inputShape.length - 3] ?? inputShape[1] ?? 0)
           : (inputShape[inputShape.length - 1] ?? 0);
       return {
-        attr: {
-          name: block.id,
-          init: `candle_nn::batch_norm(${features}, 1e-5, vb.pp("${block.id}"))?`,
-          typeAnnotation: "candle_nn::BatchNorm",
+        init: {
+          field: `${block.id}: candle_nn::BatchNorm`,
+          body: `let ${block.id} = candle_nn::batch_norm(${features}, 1e-5, vb.pp("${block.id}"))?;`,
         },
-        forward: `self.${block.id}.forward(&${mainIn})?`,
+        forward: `${outputVars[0]} = self.${block.id}.forward(&${inputVars[0]})?`,
       };
     },
   },

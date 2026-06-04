@@ -29,7 +29,7 @@ export const Conv1d: BlockPlugin = {
   },
 
   codegen: {
-    pytorch(block, inputVars) {
+    pytorch(block, inputVars, outputVars) {
       const inputShape = block.inputShapes[0] ?? [];
       const inCh = inputShape[inputShape.length - 2] ?? inputShape[1] ?? 0;
       const filters =
@@ -42,14 +42,13 @@ export const Conv1d: BlockPlugin = {
         3;
       const stride = (block.params["stride"]?.kind === "number" ? block.params["stride"].value : undefined) ?? 1;
       const padding = (block.params["padding"]?.kind === "number" ? block.params["padding"].value : undefined) ?? 0;
-      const mainIn = inputVars[0] ?? "x";
       return {
-        attr: { name: block.id, init: `nn.Conv1d(${inCh}, ${filters}, ${kernel}, stride=${stride}, padding=${padding})` },
-        forward: `self.${block.id}(${mainIn})`,
+        init: `self.${block.id} = nn.Conv1d(${inCh}, ${filters}, ${kernel}, stride=${stride}, padding=${padding})`,
+        forward: `${outputVars[0]} = self.${block.id}(${inputVars[0]})`,
       };
     },
 
-    keras(block, inputVars) {
+    keras(block, inputVars, outputVars) {
       const filters =
         (block.params["filters"]?.kind === "number" ? block.params["filters"].value : undefined) ??
         (block.params["out_channels"]?.kind === "number" ? block.params["out_channels"].value : undefined) ??
@@ -63,15 +62,13 @@ export const Conv1d: BlockPlugin = {
         (block.params["padding"]?.kind === "string" || block.params["padding"]?.kind === "bareword"
           ? (block.params["padding"] as { value: string }).value
           : undefined) ?? "valid";
-      const mainIn = inputVars[0] ?? "x";
       const safeP = paddingStr.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '\\r');
       return {
-        attr: null,
-        forward: `keras.layers.Conv1D(${filters}, ${kernel}, strides=${stride}, padding='${safeP}')(${mainIn})`,
+        forward: `${outputVars[0]} = keras.layers.Conv1D(${filters}, ${kernel}, strides=${stride}, padding='${safeP}')(${inputVars[0]})`,
       };
     },
 
-    candle(block, _inputVars) {
+    candle(block, inputVars, outputVars) {
       // candle does not have a built-in Conv1d; fallback forward expression
       const inputShape = block.inputShapes[0] ?? [];
       const inCh = inputShape[inputShape.length - 2] ?? inputShape[1] ?? 0;
@@ -85,14 +82,12 @@ export const Conv1d: BlockPlugin = {
         3;
       const stride = (block.params["stride"]?.kind === "number" ? block.params["stride"].value : undefined) ?? 1;
       const padding = (block.params["padding"]?.kind === "number" ? block.params["padding"].value : undefined) ?? 0;
-      const mainIn = _inputVars[0] ?? "x";
       return {
-        attr: {
-          name: block.id,
-          init: `candle_nn::conv1d(${inCh}, ${filters}, ${kernel}, candle_nn::Conv1dConfig { stride: ${stride}, padding: ${padding}, ..Default::default() }, vb.pp("${block.id}"))?`,
-          typeAnnotation: "candle_nn::Conv1d",
+        init: {
+          field: `${block.id}: candle_nn::Conv1d`,
+          body: `let ${block.id} = candle_nn::conv1d(${inCh}, ${filters}, ${kernel}, candle_nn::Conv1dConfig { stride: ${stride}, padding: ${padding}, ..Default::default() }, vb.pp("${block.id}"))?;`,
         },
-        forward: `self.${block.id}.forward(&${mainIn})?`,
+        forward: `${outputVars[0]} = self.${block.id}.forward(&${inputVars[0]})?`,
       };
     },
   },

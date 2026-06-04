@@ -15,49 +15,45 @@ export const InstanceNorm: BlockPlugin = {
   },
 
   codegen: {
-    pytorch(block, inputVars) {
+    pytorch(block, inputVars, outputVars) {
       const inputShape = block.inputShapes[0] ?? [];
-      const mainIn = inputVars[0] ?? "x";
       const dims = inputShape.length;
       let initExpr: string;
       if (dims <= 2) {
         const num = inputShape[inputShape.length - 1] ?? 0;
-        initExpr = `nn.InstanceNorm1d(${num})`;
+        initExpr = `self.${block.id} = nn.InstanceNorm1d(${num})`;
       } else {
         const num = inputShape[inputShape.length - 3] ?? inputShape[1] ?? 0;
-        initExpr = `nn.InstanceNorm2d(${num})`;
+        initExpr = `self.${block.id} = nn.InstanceNorm2d(${num})`;
       }
       return {
-        attr: { name: block.id, init: initExpr },
-        forward: `self.${block.id}(${mainIn})`,
+        init: initExpr,
+        forward: `${outputVars[0]} = self.${block.id}(${inputVars[0]})`,
       };
     },
 
-    keras(block, inputVars) {
-      const mainIn = inputVars[0] ?? "x";
+    keras(block, inputVars, outputVars) {
       // Keras doesn't have a direct InstanceNorm; use GroupNormalization with groups=C
       const inputShape = block.inputShapes[0] ?? [];
       const channels = inputShape[inputShape.length - 3] ?? inputShape[1] ?? inputShape[inputShape.length - 1] ?? 0;
       return {
-        attr: null,
-        forward: `keras.layers.GroupNormalization(groups=${channels})(${mainIn})`,
+        init: null,
+        forward: `${outputVars[0]} = keras.layers.GroupNormalization(groups=${channels})(${inputVars[0]})`,
       };
     },
 
-    candle(block, inputVars) {
+    candle(block, inputVars, outputVars) {
       const inputShape = block.inputShapes[0] ?? [];
-      const mainIn = inputVars[0] ?? "x";
       const features =
         inputShape.length >= 4
           ? (inputShape[inputShape.length - 3] ?? inputShape[1] ?? 0)
           : (inputShape[inputShape.length - 1] ?? 0);
       return {
-        attr: {
-          name: block.id,
-          init: `candle_nn::batch_norm(${features}, 1e-5, vb.pp("${block.id}"))?`,
-          typeAnnotation: "candle_nn::BatchNorm",
+        init: {
+          field: `${block.id}: candle_nn::BatchNorm`,
+          body: `let ${block.id} = candle_nn::batch_norm(${features}, 1e-5, vb.pp("${block.id}"))?;`,
         },
-        forward: `self.${block.id}.forward(&${mainIn})?`,
+        forward: `${outputVars[0]} = self.${block.id}.forward(&${inputVars[0]})?`,
       };
     },
   },

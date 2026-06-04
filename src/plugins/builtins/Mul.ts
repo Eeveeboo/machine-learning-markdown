@@ -10,16 +10,14 @@ const Mul: BlockPlugin = {
   },
   paramCount: () => 0,
   codegen: {
-    pytorch(_block, inputVars) {
-      return { attr: null, forward: `${inputVars.join(" * ")}` };
+    pytorch(_block, inputVars, outputVars) {
+      return { forward: `${outputVars[0]} = ${inputVars.join(" * ")}` };
     },
-    keras(_block, inputVars) {
-      return { attr: null, forward: `keras.layers.Multiply()([${inputVars.join(", ")}])` };
+    keras(_block, inputVars, outputVars) {
+      return { forward: `${outputVars[0]} = keras.layers.Multiply()([${inputVars.join(", ")}])` };
     },
-    candle(_block, inputVars) {
-      const a = inputVars[0] ?? "x";
-      const b = inputVars[1] ?? "x";
-      return { attr: null, forward: `(&${a} * &${b})?` };
+    candle(_block, inputVars, outputVars) {
+      return { forward: `${outputVars[0]} = (&${inputVars[0]} * &${inputVars[1]})?` };
     },
   },
 };

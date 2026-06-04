@@ -9,17 +9,14 @@ const Map: BlockPlugin = {
   },
   paramCount: () => 0,
   codegen: {
-    pytorch(_block, inputVars) {
-      const x = inputVars[0] ?? "x";
-      return { attr: null, forward: `${x}  # Map (identity; apply custom fn manually)` };
+    pytorch(_block, inputVars, outputVars) {
+      return { forward: `${outputVars[0]} = ${inputVars[0]}  # Map (identity; apply custom fn manually)` };
     },
-    keras(_block, inputVars) {
-      const x = inputVars[0] ?? "x";
-      return { attr: null, forward: `keras.layers.Lambda(lambda t: t)(${x})  # Map` };
+    keras(_block, inputVars, outputVars) {
+      return { forward: `${outputVars[0]} = keras.layers.Lambda(lambda t: t)(${inputVars[0]})  # Map` };
     },
-    candle(_block, inputVars) {
-      const x = inputVars[0] ?? "x";
-      return { attr: null, forward: `${x}.clone()  // Map (identity; apply custom fn manually)` };
+    candle(_block, inputVars, outputVars) {
+      return { forward: `${outputVars[0]} = ${inputVars[0]}.clone()  // Map (identity; apply custom fn manually)` };
     },
   },
 };

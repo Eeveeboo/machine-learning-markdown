@@ -13,26 +13,23 @@ const LeakyReLU: BlockPlugin = {
   },
   paramCount: () => 0,
   codegen: {
-    pytorch(block, inputVars) {
+    pytorch(block, inputVars, outputVars) {
       const slope = getNum(block.params, "negative_slope") ?? 0.01;
       return {
-        attr: { name: block.id, init: `nn.LeakyReLU(${slope})` },
-        forward: `self.${block.id}(${inputVars[0] ?? "x"})`,
+        init: `self.${block.id} = nn.LeakyReLU(${slope})`,
+        forward: `${outputVars[0]} = self.${block.id}(${inputVars[0]})`,
       };
     },
-    keras(block, inputVars) {
+    keras(block, inputVars, outputVars) {
       const slope = getNum(block.params, "negative_slope") ?? 0.01;
       return {
-        attr: null,
-        forward: `keras.layers.LeakyReLU(alpha=${slope})(${inputVars[0] ?? "x"})`,
+        forward: `${outputVars[0]} = keras.layers.LeakyReLU(alpha=${slope})(${inputVars[0]})`,
       };
     },
-    candle(block, inputVars) {
+    candle(block, inputVars, outputVars) {
       const slope = getNum(block.params, "negative_slope") ?? 0.01;
-      const x = inputVars[0] ?? "x";
       return {
-        attr: null,
-        forward: `${x}.leaky_relu(${slope})?`,
+        forward: `${outputVars[0]} = ${inputVars[0]}.leaky_relu(${slope})?`,
       };
     },
   },

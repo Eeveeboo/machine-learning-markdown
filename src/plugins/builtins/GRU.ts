@@ -23,7 +23,7 @@ export const GRU: BlockPlugin = {
   },
 
   codegen: {
-    pytorch(block, inputVars) {
+    pytorch(block, inputVars, outputVars) {
       const inputShape = block.inputShapes[0] ?? [];
       const inputSize = inputShape[inputShape.length - 1] ?? 0;
       const hidden =
@@ -32,43 +32,35 @@ export const GRU: BlockPlugin = {
         0;
       const layers =
         (block.params["num_layers"]?.kind === "number" ? block.params["num_layers"].value : undefined) ?? 1;
-      const mainIn = inputVars[0] ?? "x";
       return {
-        attr: {
-          name: block.id,
-          init: `nn.GRU(${inputSize}, ${hidden}, num_layers=${layers}, batch_first=True)`,
-        },
-        forward: `self.${block.id}(${mainIn})[0]`,
+        init: `self.${block.id} = nn.GRU(${inputSize}, ${hidden}, num_layers=${layers}, batch_first=True)`,
+        forward: `${outputVars[0]} = self.${block.id}(${inputVars[0]})[0]`,
       };
     },
 
-    keras(block, inputVars) {
+    keras(block, inputVars, outputVars) {
       const hidden =
         (block.params["hidden_size"]?.kind === "number" ? block.params["hidden_size"].value : undefined) ??
         (block.params["hidden"]?.kind === "number" ? block.params["hidden"].value : undefined) ??
         0;
-      const mainIn = inputVars[0] ?? "x";
       return {
-        attr: null,
-        forward: `keras.layers.GRU(${hidden}, return_sequences=True)(${mainIn})`,
+        forward: `${outputVars[0]} = keras.layers.GRU(${hidden}, return_sequences=True)(${inputVars[0]})`,
       };
     },
 
-    candle(block, inputVars) {
+    candle(block, inputVars, outputVars) {
       const inputShape = block.inputShapes[0] ?? [];
       const inputSize = inputShape[inputShape.length - 1] ?? 0;
       const hidden =
         (block.params["hidden_size"]?.kind === "number" ? block.params["hidden_size"].value : undefined) ??
         (block.params["hidden"]?.kind === "number" ? block.params["hidden"].value : undefined) ??
         0;
-      const mainIn = inputVars[0] ?? "x";
       return {
-        attr: {
-          name: block.id,
-          init: `candle_nn::gru(${inputSize}, ${hidden}, candle_nn::GRUConfig::default(), vb.pp("${block.id}"))?`,
-          typeAnnotation: "candle_nn::GRU",
+        init: {
+          field: `${block.id}: candle_nn::GRU`,
+          body: `let ${block.id} = candle_nn::gru(${inputSize}, ${hidden}, candle_nn::GRUConfig::default(), vb.pp("${block.id}"))?;`,
         },
-        forward: `{ let states = candle_nn::RNN::seq(&self.${block.id}, &${mainIn})?; candle_nn::RNN::states_to_tensor(&self.${block.id}, &states)? }`,
+        forward: `let ${outputVars[0]} = { let states = candle_nn::RNN::seq(&self.${block.id}, &${inputVars[0]})?; candle_nn::RNN::states_to_tensor(&self.${block.id}, &states)? };`,
       };
     },
   },

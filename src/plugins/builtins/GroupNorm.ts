@@ -17,38 +17,34 @@ export const GroupNorm: BlockPlugin = {
   },
 
   codegen: {
-    pytorch(block, inputVars) {
+    pytorch(block, inputVars, outputVars) {
       const inputShape = block.inputShapes[0] ?? [];
-      const mainIn = inputVars[0] ?? "x";
       const groups = getNum(block.params, "num_groups") ?? 32;
       const num = inputShape[inputShape.length - 3] ?? inputShape[1] ?? 0;
       return {
-        attr: { name: block.id, init: `nn.GroupNorm(${groups}, ${num})` },
-        forward: `self.${block.id}(${mainIn})`,
+        init: `self.${block.id} = nn.GroupNorm(${groups}, ${num})`,
+        forward: `${outputVars[0]} = self.${block.id}(${inputVars[0]})`,
       };
     },
 
-    keras(block, inputVars) {
-      const mainIn = inputVars[0] ?? "x";
+    keras(block, inputVars, outputVars) {
       const groups = getNum(block.params, "num_groups") ?? 32;
       return {
-        attr: null,
-        forward: `keras.layers.GroupNormalization(groups=${groups})(${mainIn})`,
+        init: null,
+        forward: `${outputVars[0]} = keras.layers.GroupNormalization(groups=${groups})(${inputVars[0]})`,
       };
     },
 
-    candle(block, inputVars) {
+    candle(block, inputVars, outputVars) {
       const inputShape = block.inputShapes[0] ?? [];
-      const mainIn = inputVars[0] ?? "x";
       const groups = getNum(block.params, "num_groups") ?? 32;
       const channels = inputShape[inputShape.length - 3] ?? inputShape[1] ?? 0;
       return {
-        attr: {
-          name: block.id,
-          init: `candle_nn::group_norm(${groups}, ${channels}, 1e-5, vb.pp("${block.id}"))?`,
-          typeAnnotation: "candle_nn::GroupNorm",
+        init: {
+          field: `${block.id}: candle_nn::GroupNorm`,
+          body: `let ${block.id} = candle_nn::group_norm(${groups}, ${channels}, 1e-5, vb.pp("${block.id}"))?;`,
         },
-        forward: `self.${block.id}.forward(&${mainIn})?`,
+        forward: `${outputVars[0]} = self.${block.id}.forward(&${inputVars[0]})?`,
       };
     },
   },

@@ -17,29 +17,26 @@ const Split: BlockPlugin = {
   },
   paramCount: () => 0,
   codegen: {
-    pytorch(block, inputVars) {
-      const x = inputVars[0] ?? "x";
+    pytorch(block, inputVars, outputVars) {
       const nv = block.params["chunks"];
       const N = nv && nv.kind === "number" ? nv.value : 2;
       const av = block.params["axis"];
       const axis = av && av.kind === "number" ? av.value : 0;
-      return { attr: null, forward: `torch.chunk(${x}, ${N}, dim=${axis})` };
+      return { forward: `${outputVars[0]} = torch.chunk(${inputVars[0]}, ${N}, dim=${axis})` };
     },
-    keras(block, inputVars) {
-      const x = inputVars[0] ?? "x";
+    keras(block, inputVars, outputVars) {
       const nv = block.params["chunks"];
       const N = nv && nv.kind === "number" ? nv.value : 2;
       const av = block.params["axis"];
       const axis = av && av.kind === "number" ? av.value : 0;
-      return { attr: null, forward: `tf.split(${x}, ${N}, axis=${axis})` };
+      return { forward: `${outputVars[0]} = tf.split(${inputVars[0]}, ${N}, axis=${axis})` };
     },
-    candle(block, inputVars) {
-      const x = inputVars[0] ?? "x";
+    candle(block, inputVars, outputVars) {
       const nv = block.params["chunks"];
       const N = nv && nv.kind === "number" ? nv.value : 2;
       const av = block.params["axis"];
       const axis = av && av.kind === "number" ? av.value : 0;
-      return { attr: null, forward: `${x}.chunk(${N}, ${axis})?` };
+      return { forward: `${outputVars[0]} = ${inputVars[0]}.chunk(${N}, ${axis})?` };
     },
   },
 };

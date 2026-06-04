@@ -3,12 +3,25 @@ import type { ParamValue } from "../ast/nodes.js";
 import type { ParamSpec } from "../blocks/types.js";
 import type { RenderContext } from "../visualize/render-context.js";
 
+export interface CandleInit {
+  /** Struct field declaration for statically-typed targets. */
+  field: string;
+  /** Init body statement for statically-typed targets. */
+  body: string;
+}
+
 export interface BlockCodegenResult {
-  attr?: { name: string; init: string; typeAnnotation?: string } | null;
+  /**
+   * Optional init-time declaration.
+   * - `null` for stateless blocks (activations, merges, arithmetic).
+   * - A `string` for most targets (PyTorch, Keras, etc.).
+   * - A `CandleInit` for Candle (Rust) backends.
+   */
+  init?: string | CandleInit | null;
   forward: string;
 }
 
-export type BlockCodegenFn = (block: Block, inputVars: string[]) => BlockCodegenResult;
+export type BlockCodegenFn = (block: Block, inputVars: string[], outputVars: string[]) => BlockCodegenResult;
 
 /**
  * Interface that every plugin must satisfy.

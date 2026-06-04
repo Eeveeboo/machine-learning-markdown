@@ -9,6 +9,53 @@
  *
  * If a plugin exports `inferShape`, it is also registered in the block
  * registry via `registerBlock` so the rest of the pipeline can use it.
+ *
+ * ## Example plugin file (`MyCustomLayer.mjs`)
+ *
+ * ```js
+ * export default {
+ *   inputs: ["x"],
+ *   outputs: ["y"],
+ *   params: [
+ *     { name: "multiplier", type: "float", default: 2.0 },
+ *   ],
+ *
+ *   codegen: {
+ *     pytorch(block, inputVars, outputVars) {
+ *       return {
+ *         init: `nn.Linear(${inputVars[0]}, ${outputVars[0]})`,
+ *         forward: `${outputVars[0]} = self.${block.id}(${inputVars[0]})`,
+ *       };
+ *     },
+ *
+ *     candle(block, inputVars, outputVars) {
+ *       return {
+ *         init: {
+ *           field: `${block.id}: candle_nn::Linear`,
+ *           body: `${block.id}: candle_nn::linear(...)?`,
+ *         },
+ *         forward: `${outputVars[0]} = self.${block.id}.forward(&${inputVars[0]})?`,
+ *       };
+ *     },
+ *   },
+ *
+ *   inferShape(inputs, params) {
+ *     return inputs.map(s => ({ ...s }));
+ *   },
+ * };
+ * ```
+ *
+ * Each codegen function receives three arguments:
+ * - `block` – the `Block` AST node (properties: `id`, `params`, ...)
+ * - `inputVars` – string array of input variable expressions
+ * - `outputVars` – string array of output variable names to assign
+ *
+ * The return value is a `BlockCodegenResult`:
+ * - `init` – optional init declaration: a `string` for PyTorch/Keras,
+ *   `null` for stateless blocks, or a `CandleInit` object (`{ field, body }`)
+ *   for Candle (Rust) backends.
+ * - `forward` – a full assignment statement using the output variables,
+ *   e.g. `"out = self.layer(in)"`.
  */
 
 import * as fs from "node:fs";

@@ -20,7 +20,7 @@ export const Linear: BlockPlugin = {
   },
 
   codegen: {
-    pytorch(block, inputVars) {
+    pytorch(block, inputVars, outputVars) {
       const inputShape = block.inputShapes[0] ?? [];
       const outputShape = block.outputShapes[0] ?? [];
       const inF = inputShape[inputShape.length - 1] ?? 0;
@@ -29,26 +29,23 @@ export const Linear: BlockPlugin = {
         (block.params["units"]?.kind === "number" ? block.params["units"].value : undefined) ??
         outputShape[outputShape.length - 1] ??
         0;
-      const mainIn = inputVars[0] ?? "x";
       return {
-        attr: { name: block.id, init: `nn.Linear(${inF}, ${outF})` },
-        forward: `self.${block.id}(${mainIn})`,
+        init: `self.${block.id} = nn.Linear(${inF}, ${outF})`,
+        forward: `${outputVars[0]} = self.${block.id}(${inputVars[0]})`,
       };
     },
 
-    keras(block, inputVars) {
+    keras(block, inputVars, outputVars) {
       const outF =
         (block.params["out_features"]?.kind === "number" ? block.params["out_features"].value : undefined) ??
         (block.params["units"]?.kind === "number" ? block.params["units"].value : undefined) ??
         0;
-      const mainIn = inputVars[0] ?? "x";
       return {
-        attr: null,
-        forward: `keras.layers.Dense(${outF})(${mainIn})`,
+        forward: `${outputVars[0]} = keras.layers.Dense(${outF})(${inputVars[0]})`,
       };
     },
 
-    candle(block, inputVars) {
+    candle(block, inputVars, outputVars) {
       const inputShape = block.inputShapes[0] ?? [];
       const outputShape = block.outputShapes[0] ?? [];
       const inF = inputShape[inputShape.length - 1] ?? 0;
@@ -57,14 +54,12 @@ export const Linear: BlockPlugin = {
         (block.params["units"]?.kind === "number" ? block.params["units"].value : undefined) ??
         outputShape[outputShape.length - 1] ??
         0;
-      const mainIn = inputVars[0] ?? "x";
       return {
-        attr: {
-          name: block.id,
-          init: `candle_nn::linear(${inF}, ${outF}, vb.pp("${block.id}"))?`,
-          typeAnnotation: "candle_nn::Linear",
+        init: {
+          field: `${block.id}: candle_nn::Linear`,
+          body: `let ${block.id} = candle_nn::linear(${inF}, ${outF}, vb.pp("${block.id}"))?;`,
         },
-        forward: `self.${block.id}.forward(&${mainIn})?`,
+        forward: `${outputVars[0]} = self.${block.id}.forward(&${inputVars[0]})?`,
       };
     },
   },

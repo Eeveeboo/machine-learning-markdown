@@ -23,49 +23,44 @@ export const Embedding: BlockPlugin = {
   },
 
   codegen: {
-    pytorch(block, inputVars) {
+    pytorch(block, inputVars, outputVars) {
       const vocab =
         (block.params["vocab_size"]?.kind === "number" ? block.params["vocab_size"].value : undefined) ?? 0;
       const embed =
         (block.params["embed_dim"]?.kind === "number" ? block.params["embed_dim"].value : undefined) ??
         (block.params["embedding_dim"]?.kind === "number" ? block.params["embedding_dim"].value : undefined) ??
         0;
-      const mainIn = inputVars[0] ?? "x";
       return {
-        attr: { name: block.id, init: `nn.Embedding(${vocab}, ${embed})` },
-        forward: `self.${block.id}(${mainIn})`,
+        init: `self.${block.id} = nn.Embedding(${vocab}, ${embed})`,
+        forward: `${outputVars[0]} = self.${block.id}(${inputVars[0]})`,
       };
     },
 
-    keras(block, inputVars) {
+    keras(block, inputVars, outputVars) {
       const vocab =
         (block.params["vocab_size"]?.kind === "number" ? block.params["vocab_size"].value : undefined) ?? 0;
       const embed =
         (block.params["embed_dim"]?.kind === "number" ? block.params["embed_dim"].value : undefined) ??
         (block.params["embedding_dim"]?.kind === "number" ? block.params["embedding_dim"].value : undefined) ??
         0;
-      const mainIn = inputVars[0] ?? "x";
       return {
-        attr: null,
-        forward: `keras.layers.Embedding(${vocab}, ${embed})(${mainIn})`,
+        forward: `${outputVars[0]} = keras.layers.Embedding(${vocab}, ${embed})(${inputVars[0]})`,
       };
     },
 
-    candle(block, inputVars) {
+    candle(block, inputVars, outputVars) {
       const vocab =
         (block.params["vocab_size"]?.kind === "number" ? block.params["vocab_size"].value : undefined) ?? 0;
       const dim =
         (block.params["embed_dim"]?.kind === "number" ? block.params["embed_dim"].value : undefined) ??
         (block.params["embedding_dim"]?.kind === "number" ? block.params["embedding_dim"].value : undefined) ??
         0;
-      const mainIn = inputVars[0] ?? "x";
       return {
-        attr: {
-          name: block.id,
-          init: `candle_nn::embedding(${vocab}, ${dim}, vb.pp("${block.id}"))?`,
-          typeAnnotation: "candle_nn::Embedding",
+        init: {
+          field: `${block.id}: candle_nn::Embedding`,
+          body: `let ${block.id} = candle_nn::embedding(${vocab}, ${dim}, vb.pp("${block.id}"))?;`,
         },
-        forward: `self.${block.id}.forward(&${mainIn})?`,
+        forward: `${outputVars[0]} = self.${block.id}.forward(&${inputVars[0]})?`,
       };
     },
   },

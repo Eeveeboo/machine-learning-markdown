@@ -15,35 +15,30 @@ export const LayerNorm: BlockPlugin = {
   },
 
   codegen: {
-    pytorch(block, inputVars) {
+    pytorch(block, inputVars, outputVars) {
       const inputShape = block.inputShapes[0] ?? [];
-      const mainIn = inputVars[0] ?? "x";
       const normalized = inputShape.length ? `[${inputShape.slice(1).join(", ")}]` : "[]";
       return {
-        attr: { name: block.id, init: `nn.LayerNorm(${normalized})` },
-        forward: `self.${block.id}(${mainIn})`,
+        init: `self.${block.id} = nn.LayerNorm(${normalized})`,
+        forward: `${outputVars[0]} = self.${block.id}(${inputVars[0]})`,
       };
     },
 
-    keras(block, inputVars) {
-      const mainIn = inputVars[0] ?? "x";
+    keras(block, inputVars, outputVars) {
       return {
-        attr: null,
-        forward: `keras.layers.LayerNormalization()(${mainIn})`,
+        forward: `${outputVars[0]} = keras.layers.LayerNormalization()(${inputVars[0]})`,
       };
     },
 
-    candle(block, inputVars) {
+    candle(block, inputVars, outputVars) {
       const inputShape = block.inputShapes[0] ?? [];
-      const mainIn = inputVars[0] ?? "x";
       const features = inputShape[inputShape.length - 1] ?? 0;
       return {
-        attr: {
-          name: block.id,
-          init: `candle_nn::layer_norm(${features}, 1e-5, vb.pp("${block.id}"))?`,
-          typeAnnotation: "candle_nn::LayerNorm",
+        init: {
+          field: `${block.id}: candle_nn::LayerNorm`,
+          body: `let ${block.id} = candle_nn::layer_norm(${features}, 1e-5, vb.pp("${block.id}"))?;`,
         },
-        forward: `self.${block.id}.forward(&${mainIn})?`,
+        forward: `${outputVars[0]} = self.${block.id}.forward(&${inputVars[0]})?`,
       };
     },
   },

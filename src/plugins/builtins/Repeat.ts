@@ -11,23 +11,20 @@ const Repeat: BlockPlugin = {
   },
   paramCount: () => 0,
   codegen: {
-    pytorch(block, inputVars) {
-      const x = inputVars[0] ?? "x";
+    pytorch(block, inputVars, outputVars) {
       const tv = block.params["times"];
       const times = tv && tv.kind === "number" ? tv.value : 1;
-      return { attr: null, forward: `${x}.repeat(${times})` };
+      return { forward: `${outputVars[0]} = ${inputVars[0]}.repeat(${times})` };
     },
-    keras(block, inputVars) {
-      const x = inputVars[0] ?? "x";
+    keras(block, inputVars, outputVars) {
       const tv = block.params["times"];
       const times = tv && tv.kind === "number" ? tv.value : 1;
-      return { attr: null, forward: `keras.layers.RepeatVector(${times})(${x})` };
+      return { forward: `${outputVars[0]} = keras.layers.RepeatVector(${times})(${inputVars[0]})` };
     },
-    candle(block, inputVars) {
-      const x = inputVars[0] ?? "x";
+    candle(block, inputVars, outputVars) {
       const tv = block.params["times"];
       const times = tv && tv.kind === "number" ? tv.value : 1;
-      return { attr: null, forward: `${x}.repeat(&[${times}])?` };
+      return { forward: `${outputVars[0]} = ${inputVars[0]}.repeat(&[${times}])?` };
     },
   },
 };

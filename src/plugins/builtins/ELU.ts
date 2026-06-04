@@ -13,26 +13,23 @@ const ELU: BlockPlugin = {
   },
   paramCount: () => 0,
   codegen: {
-    pytorch(block, inputVars) {
+    pytorch(block, inputVars, outputVars) {
       const alpha = getNum(block.params, "alpha") ?? 1.0;
       return {
-        attr: { name: block.id, init: `nn.ELU(alpha=${alpha})` },
-        forward: `self.${block.id}(${inputVars[0] ?? "x"})`,
+        init: `self.${block.id} = nn.ELU(alpha=${alpha})`,
+        forward: `${outputVars[0]} = self.${block.id}(${inputVars[0]})`,
       };
     },
-    keras(block, inputVars) {
+    keras(block, inputVars, outputVars) {
       const alpha = getNum(block.params, "alpha") ?? 1.0;
       return {
-        attr: null,
-        forward: `keras.layers.ELU(alpha=${alpha})(${inputVars[0] ?? "x"})`,
+        forward: `${outputVars[0]} = keras.layers.ELU(alpha=${alpha})(${inputVars[0]})`,
       };
     },
-    candle(block, inputVars) {
+    candle(block, inputVars, outputVars) {
       const alpha = getNum(block.params, "alpha") ?? 1.0;
-      const x = inputVars[0] ?? "x";
       return {
-        attr: null,
-        forward: `${x}.elu(${alpha})?`,
+        forward: `${outputVars[0]} = ${inputVars[0]}.elu(${alpha})?`,
       };
     },
   },

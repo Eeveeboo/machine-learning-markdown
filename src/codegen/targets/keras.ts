@@ -81,9 +81,6 @@ export function generateKeras(graph: Graph, _registry: Map<string, BlockDef>): G
     }
 
     const fn = getBlockCodegenWithFallback(b.type, "keras");
-    const result = fn(b, inputVars);
-    const expr = result.forward;
-
     // Determine output variable name
     let outVar: string;
     if (namedOutputs.has(b.id)) {
@@ -95,8 +92,17 @@ export function generateKeras(graph: Graph, _registry: Map<string, BlockDef>): G
     }
     blockOutputVar.set(b.id, outVar);
 
+    const outCount = b.outputShapes.length;
+    let outputVars: string[];
+    if (outCount <= 1) {
+      outputVars = [outVar];
+    } else {
+      const base = freshVar();
+      outputVars = Array.from({ length: outCount }, (_, i) => `${base}_${i}`);
+    }
+    const result = fn(b, inputVars, outputVars);
     const shapeAnn = shapeComment(b.outputShapes);
-    lines.push(`    ${outVar} = ${expr}${shapeAnn}`);
+    lines.push(`    ${result.forward}${shapeAnn}`);
   }
 
   lines.push(`    return keras.Model(inputs=${inputVar}, outputs=${outputVar})`);

@@ -14,24 +14,21 @@ const PReLU: BlockPlugin = {
     return inputs[0][0]; // one slope per input channel
   },
   codegen: {
-    pytorch(block, inputVars) {
+    pytorch(block, inputVars, outputVars) {
       return {
-        attr: { name: block.id, init: "nn.PReLU()" },
-        forward: `self.${block.id}(${inputVars[0] ?? "x"})`,
+        init: `self.${block.id} = nn.PReLU()`,
+        forward: `${outputVars[0]} = self.${block.id}(${inputVars[0]})`,
       };
     },
-    keras(block, inputVars) {
+    keras(block, inputVars, outputVars) {
       return {
-        attr: null,
-        forward: `keras.layers.PReLU()(${inputVars[0] ?? "x"})`,
+        forward: `${outputVars[0]} = keras.layers.PReLU()(${inputVars[0]})`,
       };
     },
-    candle(_block, inputVars) {
+    candle(_block, inputVars, outputVars) {
       // candle-core does not provide a built-in PReLU; emit a comment placeholder
-      const x = inputVars[0] ?? "x";
       return {
-        attr: null,
-        forward: `${x}.relu()?  /* PReLU: learnable slopes not supported in candle codegen */`,
+        forward: `${outputVars[0]} = ${inputVars[0]}.relu()?  /* PReLU: learnable slopes not supported in candle codegen */`,
       };
     },
   },

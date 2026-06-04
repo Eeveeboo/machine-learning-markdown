@@ -19,7 +19,7 @@ export const AdaptiveAvgPool: BlockPlugin = {
   },
 
   codegen: {
-    pytorch(block, inputVars) {
+    pytorch(block, inputVars, outputVars) {
       const sizeParam = block.params["size"];
       let outH = 1;
       let outW = 1;
@@ -39,14 +39,13 @@ export const AdaptiveAvgPool: BlockPlugin = {
         outW = (block.params["output_size_w"]?.kind === "number" ? block.params["output_size_w"].value : undefined) ??
                outH;
       }
-      const mainIn = inputVars[0] ?? "x";
       return {
-        attr: { name: block.id, init: `nn.AdaptiveAvgPool2d((${outH}, ${outW}))` },
-        forward: `self.${block.id}(${mainIn})`,
+        init: `self.${block.id} = nn.AdaptiveAvgPool2d((${outH}, ${outW}))`,
+        forward: `${outputVars[0]} = self.${block.id}(${inputVars[0]})`,
       };
     },
 
-    keras(block, inputVars) {
+    keras(block, inputVars, outputVars) {
       // Keras doesn't have AdaptiveAvgPool2D; use Lambda or AveragePooling2D approximation
       const sizeParam = block.params["size"];
       let outH = 1;
@@ -55,19 +54,15 @@ export const AdaptiveAvgPool: BlockPlugin = {
         outH = sizeParam.dims[0];
         outW = sizeParam.dims[1];
       }
-      const mainIn = inputVars[0] ?? "x";
       return {
-        attr: null,
-        forward: `keras.layers.Lambda(lambda x: tf.image.resize(x, (${outH}, ${outW})))(${mainIn})`,
+        forward: `${outputVars[0]} = keras.layers.Lambda(lambda x: tf.image.resize(x, (${outH}, ${outW})))(${inputVars[0]})`,
       };
     },
 
-    candle(_block, inputVars) {
-      const mainIn = inputVars[0] ?? "x";
+    candle(_block, inputVars, outputVars) {
       // Candle doesn't have adaptive_avg_pool2d; use mean over spatial dims
       return {
-        attr: null,
-        forward: `${mainIn}.mean_keepdim(candle_core::D::Minus1)?.mean_keepdim(candle_core::D::Minus2)?`,
+        forward: `${outputVars[0]} = ${inputVars[0]}.mean_keepdim(candle_core::D::Minus1)?.mean_keepdim(candle_core::D::Minus2)?`,
       };
     },
   },

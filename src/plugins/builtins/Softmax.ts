@@ -13,27 +13,24 @@ const Softmax: BlockPlugin = {
   },
   paramCount: () => 0,
   codegen: {
-    pytorch(block, inputVars) {
+    pytorch(block, inputVars, outputVars) {
       const dim = getNum(block.params, "dim") ?? -1;
       return {
-        attr: { name: block.id, init: `nn.Softmax(dim=${dim})` },
-        forward: `self.${block.id}(${inputVars[0] ?? "x"})`,
+        init: `self.${block.id} = nn.Softmax(dim=${dim})`,
+        forward: `${outputVars[0]} = self.${block.id}(${inputVars[0]})`,
       };
     },
-    keras(block, inputVars) {
+    keras(block, inputVars, outputVars) {
       const axis = getNum(block.params, "dim") ?? -1;
       return {
-        attr: null,
-        forward: `keras.layers.Softmax(axis=${axis})(${inputVars[0] ?? "x"})`,
+        forward: `${outputVars[0]} = keras.layers.Softmax(axis=${axis})(${inputVars[0]})`,
       };
     },
-    candle(block, inputVars) {
+    candle(block, inputVars, outputVars) {
       const dim = getNum(block.params, "dim") ?? -1;
-      const x = inputVars[0] ?? "x";
       // candle uses softmax with explicit dim; -1 maps to last dim
       return {
-        attr: null,
-        forward: `candle_nn::ops::softmax(&${x}, candle_core::D::Minus${dim === -1 ? 1 : Math.abs(dim)})?`,
+        forward: `${outputVars[0]} = candle_nn::ops::softmax(&${inputVars[0]}, candle_core::D::Minus${dim === -1 ? 1 : Math.abs(dim)})?`,
       };
     },
   },

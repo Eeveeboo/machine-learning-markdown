@@ -29,7 +29,7 @@ export const Conv2d: BlockPlugin = {
   },
 
   codegen: {
-    pytorch(block, inputVars) {
+    pytorch(block, inputVars, outputVars) {
       const inputShape = block.inputShapes[0] ?? [];
       const inCh = inputShape[inputShape.length - 3] ?? inputShape[1] ?? 0;
       const filters =
@@ -42,14 +42,13 @@ export const Conv2d: BlockPlugin = {
         3;
       const stride = (block.params["stride"]?.kind === "number" ? block.params["stride"].value : undefined) ?? 1;
       const padding = (block.params["padding"]?.kind === "number" ? block.params["padding"].value : undefined) ?? 0;
-      const mainIn = inputVars[0] ?? "x";
       return {
-        attr: { name: block.id, init: `nn.Conv2d(${inCh}, ${filters}, ${kernel}, stride=${stride}, padding=${padding})` },
-        forward: `self.${block.id}(${mainIn})`,
+        init: `self.${block.id} = nn.Conv2d(${inCh}, ${filters}, ${kernel}, stride=${stride}, padding=${padding})`,
+        forward: `${outputVars[0]} = self.${block.id}(${inputVars[0]})`,
       };
     },
 
-    keras(block, inputVars) {
+    keras(block, inputVars, outputVars) {
       const filters =
         (block.params["filters"]?.kind === "number" ? block.params["filters"].value : undefined) ??
         (block.params["out_channels"]?.kind === "number" ? block.params["out_channels"].value : undefined) ??
@@ -64,15 +63,13 @@ export const Conv2d: BlockPlugin = {
         (block.params["padding"]?.kind === "string" || block.params["padding"]?.kind === "bareword"
           ? (block.params["padding"] as { value: string }).value
           : undefined) ?? (paddingNum === 0 ? "valid" : "same");
-      const mainIn = inputVars[0] ?? "x";
       const safeP = paddingStr.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '\\r');
       return {
-        attr: null,
-        forward: `keras.layers.Conv2D(${filters}, ${kernel}, strides=${stride}, padding='${safeP}')(${mainIn})`,
+        forward: `${outputVars[0]} = keras.layers.Conv2D(${filters}, ${kernel}, strides=${stride}, padding='${safeP}')(${inputVars[0]})`,
       };
     },
 
-    candle(block, inputVars) {
+    candle(block, inputVars, outputVars) {
       const inputShape = block.inputShapes[0] ?? [];
       const inCh = inputShape[inputShape.length - 3] ?? inputShape[1] ?? 0;
       const filters =
@@ -85,14 +82,12 @@ export const Conv2d: BlockPlugin = {
         3;
       const stride = (block.params["stride"]?.kind === "number" ? block.params["stride"].value : undefined) ?? 1;
       const padding = (block.params["padding"]?.kind === "number" ? block.params["padding"].value : undefined) ?? 0;
-      const mainIn = inputVars[0] ?? "x";
       return {
-        attr: {
-          name: block.id,
-          init: `candle_nn::conv2d(${inCh}, ${filters}, ${kernel}, candle_nn::Conv2dConfig { stride: ${stride}, padding: ${padding}, ..Default::default() }, vb.pp("${block.id}"))?`,
-          typeAnnotation: "candle_nn::Conv2d",
+        init: {
+          field: `${block.id}: candle_nn::Conv2d`,
+          body: `let ${block.id} = candle_nn::conv2d(${inCh}, ${filters}, ${kernel}, candle_nn::Conv2dConfig { stride: ${stride}, padding: ${padding}, ..Default::default() }, vb.pp("${block.id}"))?;`,
         },
-        forward: `self.${block.id}.forward(&${mainIn})?`,
+        forward: `${outputVars[0]} = self.${block.id}.forward(&${inputVars[0]})?`,
       };
     },
   },

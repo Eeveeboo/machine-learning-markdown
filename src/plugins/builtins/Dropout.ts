@@ -12,36 +12,36 @@ const Dropout: BlockPlugin = {
   },
   paramCount: () => 0,
   codegen: {
-    pytorch(block, inputVars) {
+    pytorch(block, inputVars, outputVars) {
       const p = (() => {
         const v = block.params["p"] ?? block.params["rate"];
         return v && v.kind === "number" ? v.value : 0.5;
       })();
       return {
-        attr: { name: block.id, init: `nn.Dropout(p=${p})` },
-        forward: `self.${block.id}(${inputVars[0] ?? "x"})`,
+        init: `self.${block.id} = nn.Dropout(p=${p})`,
+        forward: `${outputVars[0]} = self.${block.id}(${inputVars[0]})`,
       };
     },
-    keras(_block, inputVars) {
-      const x = inputVars[0] ?? "x";
+    keras(_block, inputVars, outputVars) {
       const p = (() => {
         const v = _block.params["p"] ?? _block.params["rate"];
         return v && v.kind === "number" ? v.value : 0.5;
       })();
       return {
-        attr: null,
-        forward: `keras.layers.Dropout(${p})(${x})`,
+        forward: `${outputVars[0]} = keras.layers.Dropout(${p})(${inputVars[0]})`,
       };
     },
-    candle(block, inputVars) {
-      const x = inputVars[0] ?? "x";
+    candle(block, inputVars, outputVars) {
       const p = (() => {
         const v = block.params["p"] ?? block.params["rate"];
         return v && v.kind === "number" ? v.value : 0.5;
       })();
       return {
-        attr: { name: block.id, init: `candle_nn::Dropout::new(${p})`, typeAnnotation: "candle_nn::Dropout" },
-        forward: `self.${block.id}.forward(&${x}, true)?`,
+        init: {
+          field: `${block.id}: candle_nn::Dropout`,
+          body: `let ${block.id} = candle_nn::Dropout::new(${p});`,
+        },
+        forward: `${outputVars[0]} = self.${block.id}.forward(&${inputVars[0]}, true)?`,
       };
     },
   },

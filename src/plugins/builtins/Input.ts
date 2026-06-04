@@ -14,19 +14,18 @@ const Input: BlockPlugin = {
   paramCount: () => 0,
 
   codegen: {
-    pytorch(block: Block, inputVars: string[]): BlockCodegenResult {
-      const mainIn = inputVars[0] ?? "x";
-      return { attr: null, forward: mainIn };
+    pytorch(block: Block, inputVars: string[], _outputVars: string[]): BlockCodegenResult {
+      return { init: null, forward: inputVars[0] };
     },
 
-    keras(_block: Block, _inputVars: string[]): BlockCodegenResult {
+    keras(_block: Block, _inputVars: string[], _outputVars: string[]): BlockCodegenResult {
       // Keras Input is handled specially in the generator; no op here
-      return { attr: null, forward: "" };
+      return { init: null, forward: "" };
     },
 
-    candle(_block: Block, _inputVars: string[]): BlockCodegenResult {
+    candle(_block: Block, _inputVars: string[], _outputVars: string[]): BlockCodegenResult {
       // Input in candle is the initial tensor; no op
-      return { attr: null, forward: "" };
+      return { init: null, forward: "" };
     },
   },
 };

@@ -18,19 +18,19 @@ const Concat: BlockPlugin = {
   },
   paramCount: () => 0,
   codegen: {
-    pytorch(block, inputVars) {
+    pytorch(block, inputVars, outputVars) {
       const v = block.params["axis"];
       const dim = v && v.kind === "number" ? v.value : 1;
-      return { attr: null, forward: `torch.cat([${inputVars.join(", ")}], dim=${dim})` };
+      return { forward: `${outputVars[0]} = torch.cat([${inputVars.join(", ")}], dim=${dim})` };
     },
-    keras(block, inputVars) {
+    keras(block, inputVars, outputVars) {
       const v = block.params["axis"];
       const axis = v && v.kind === "number" ? v.value : -1;
-      return { attr: null, forward: `keras.layers.Concatenate(axis=${axis})([${inputVars.join(", ")}])` };
+      return { forward: `${outputVars[0]} = keras.layers.Concatenate(axis=${axis})([${inputVars.join(", ")}])` };
     },
-    candle(_block, inputVars) {
+    candle(_block, inputVars, outputVars) {
       const tensors = inputVars.map((v) => `&${v}`).join(", ");
-      return { attr: null, forward: `Tensor::cat(&[${tensors}], 1)?` };
+      return { forward: `${outputVars[0]} = Tensor::cat(&[${tensors}], 1)?` };
     },
   },
 };

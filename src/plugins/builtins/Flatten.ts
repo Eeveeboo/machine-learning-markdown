@@ -11,21 +11,19 @@ const Flatten: BlockPlugin = {
   },
   paramCount: () => 0,
   codegen: {
-    pytorch(block, inputVars) {
+    pytorch(block, inputVars, outputVars) {
       return {
-        attr: { name: block.id, init: "nn.Flatten()" },
-        forward: `self.${block.id}(${inputVars[0] ?? "x"})`,
+        init: `self.${block.id} = nn.Flatten()`,
+        forward: `${outputVars[0]} = self.${block.id}(${inputVars[0]})`,
       };
     },
-    keras(_block, inputVars) {
+    keras(_block, inputVars, outputVars) {
       return {
-        attr: null,
-        forward: `keras.layers.Flatten()(${inputVars[0] ?? "x"})`,
+        forward: `${outputVars[0]} = keras.layers.Flatten()(${inputVars[0]})`,
       };
     },
-    candle(_block, inputVars) {
-      const x = inputVars[0] ?? "x";
-      return { attr: null, forward: `${x}.flatten_from(1)?` };
+    candle(_block, inputVars, outputVars) {
+      return { forward: `${outputVars[0]} = ${inputVars[0]}.flatten_from(1)?` };
     },
   },
 };

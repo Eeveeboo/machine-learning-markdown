@@ -30,7 +30,7 @@ export const TransposedConv2d: BlockPlugin = {
   },
 
   codegen: {
-    pytorch(block, inputVars) {
+    pytorch(block, inputVars, outputVars) {
       const inputShape = block.inputShapes[0] ?? [];
       const inCh = inputShape[inputShape.length - 3] ?? inputShape[1] ?? 0;
       const filters =
@@ -43,14 +43,13 @@ export const TransposedConv2d: BlockPlugin = {
         3;
       const stride = (block.params["stride"]?.kind === "number" ? block.params["stride"].value : undefined) ?? 1;
       const padding = (block.params["padding"]?.kind === "number" ? block.params["padding"].value : undefined) ?? 0;
-      const mainIn = inputVars[0] ?? "x";
       return {
-        attr: { name: block.id, init: `nn.ConvTranspose2d(${inCh}, ${filters}, ${kernel}, stride=${stride}, padding=${padding})` },
-        forward: `self.${block.id}(${mainIn})`,
+        init: `self.${block.id} = nn.ConvTranspose2d(${inCh}, ${filters}, ${kernel}, stride=${stride}, padding=${padding})`,
+        forward: `${outputVars[0]} = self.${block.id}(${inputVars[0]})`,
       };
     },
 
-    keras(block, inputVars) {
+    keras(block, inputVars, outputVars) {
       const filters =
         (block.params["filters"]?.kind === "number" ? block.params["filters"].value : undefined) ??
         (block.params["out_channels"]?.kind === "number" ? block.params["out_channels"].value : undefined) ??
@@ -64,20 +63,16 @@ export const TransposedConv2d: BlockPlugin = {
         (block.params["padding"]?.kind === "string" || block.params["padding"]?.kind === "bareword"
           ? (block.params["padding"] as { value: string }).value
           : undefined) ?? "valid";
-      const mainIn = inputVars[0] ?? "x";
       const safeP = paddingStr.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '\\r');
       return {
-        attr: null,
-        forward: `keras.layers.Conv2DTranspose(${filters}, ${kernel}, strides=${stride}, padding='${safeP}')(${mainIn})`,
+        forward: `${outputVars[0]} = keras.layers.Conv2DTranspose(${filters}, ${kernel}, strides=${stride}, padding='${safeP}')(${inputVars[0]})`,
       };
     },
 
-    candle(block, inputVars) {
+    candle(block, inputVars, outputVars) {
       // candle does not have ConvTranspose2d in standard candle_nn; emit placeholder
-      const mainIn = inputVars[0] ?? "x";
       return {
-        attr: null,
-        forward: `unimplemented!("TransposedConv2d not supported in candle")  // ${mainIn}`,
+        forward: `${outputVars[0]} = unimplemented!("TransposedConv2d not supported in candle")  // ${inputVars[0]}`,
       };
     },
   },

@@ -10,21 +10,19 @@ const GELU: BlockPlugin = {
   },
   paramCount: () => 0,
   codegen: {
-    pytorch(block, inputVars) {
+    pytorch(block, inputVars, outputVars) {
       return {
-        attr: { name: block.id, init: "nn.GELU()" },
-        forward: `self.${block.id}(${inputVars[0] ?? "x"})`,
+        init: `self.${block.id} = nn.GELU()`,
+        forward: `${outputVars[0]} = self.${block.id}(${inputVars[0]})`,
       };
     },
-    keras(_block, inputVars) {
+    keras(_block, inputVars, outputVars) {
       return {
-        attr: null,
-        forward: `keras.layers.Activation('gelu')(${inputVars[0] ?? "x"})`,
+        forward: `${outputVars[0]} = keras.layers.Activation('gelu')(${inputVars[0]})`,
       };
     },
-    candle(_block, inputVars) {
-      const x = inputVars[0] ?? "x";
-      return { attr: null, forward: `${x}.gelu()?` };
+    candle(_block, inputVars, outputVars) {
+      return { forward: `${outputVars[0]} = ${inputVars[0]}.gelu()?` };
     },
   },
 };

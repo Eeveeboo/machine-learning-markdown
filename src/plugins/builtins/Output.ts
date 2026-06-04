@@ -13,19 +13,16 @@ const Output: BlockPlugin = {
   paramCount: () => 0,
 
   codegen: {
-    pytorch(_block: Block, inputVars: string[]): BlockCodegenResult {
-      const mainIn = inputVars[0] ?? "x";
-      return { attr: null, forward: `return ${mainIn}` };
+    pytorch(_block: Block, inputVars: string[], _outputVars: string[]): BlockCodegenResult {
+      return { forward: `return ${inputVars[0]}` };
     },
 
-    keras(_block: Block, inputVars: string[]): BlockCodegenResult {
-      // Keras Output is handled specially in the generator
-      return { attr: null, forward: "" };
+    keras(_block: Block, inputVars: string[], _outputVars: string[]): BlockCodegenResult {
+      return { forward: `return ${inputVars[0]}` };
     },
 
-    candle(_block: Block, inputVars: string[]): BlockCodegenResult {
-      const mainIn = inputVars[0] ?? "x";
-      return { attr: null, forward: `Ok(${mainIn})` };
+    candle(_block: Block, inputVars: string[], _outputVars: string[]): BlockCodegenResult {
+      return { forward: `Ok(${inputVars[0]})` };
     },
   },
 };

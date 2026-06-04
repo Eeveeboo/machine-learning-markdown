@@ -13,6 +13,10 @@ function toSnakeCase(name: string): string {
   return name.charAt(0).toLowerCase() + name.slice(1);
 }
 
+function indentLines(str: string, indent: string): string {
+  return str.split("\n").map((line) => line ? `${indent}${line}` : line).join("\n");
+}
+
 // ---------------------------------------------------------------------------
 // Code generation
 // ---------------------------------------------------------------------------
@@ -29,25 +33,31 @@ export function generateCandle(graph: Graph, _registry: Map<string, BlockDef>): 
   }
 
   // Collect struct fields (learnable layers) using plugin codegen
-  interface StructField {
-    fieldName: string;
-    fieldType: string;
-    initExpr: string;
-  }
+  const structFieldLines: string[] = [];
+  const withScopesInitLines: string[] = [];
+  const newOkFields: string[] = [];
+  const defaultScopeArgs: string[] = [];
+  const scopeParams: string[] = [];
 
-  const fields: StructField[] = [];
-  const seen = new Set<string>();
   for (const b of sorted) {
     if (b.type === "Input" || b.type === "Output") continue;
     const fn = getBlockCodegenWithFallback(b.type, "candle");
-    const result = fn(b, []);
-    if (result.attr && !seen.has(result.attr.name)) {
-      seen.add(result.attr.name);
-      fields.push({
-        fieldName: result.attr.name,
-        fieldType: result.attr.typeAnnotation ?? "/* unknown */",
-        initExpr: result.attr.init,
-      });
+    const result = fn(b, [], []);  // init pass: no var names needed
+    if (result.init && typeof result.init === "object" && "field" in result.init) {
+      const candleInit = result.init as { field: string; body: string };
+      structFieldLines.push(`    ${candleInit.field}`);
+
+      // Transform vb.pp("blockId") → weights.pp(snakeName) for with_scopes
+      const snakeName = toSnakeCase(b.id);
+      const body = candleInit.body.replace(
+        new RegExp(`vb\\.pp\\("${b.id}"\\)`, "g"),
+        `weights.pp(${snakeName})`
+      );
+      withScopesInitLines.push(indentLines(body, "        "));
+
+      newOkFields.push(`            ${b.id},`);
+      defaultScopeArgs.push(`        "${b.id}",`);
+      scopeParams.push(`        ${toSnakeCase(candleInit.field.split(":")[0].trim())}: &str,`);
     }
   }
 
@@ -96,39 +106,27 @@ export function generateCandle(graph: Graph, _registry: Map<string, BlockDef>): 
     }
 
     const fn = getBlockCodegenWithFallback(b.type, "candle");
-    const result = fn(b, inputVars);
-    const expr = result.forward;
-
-    let outVar: string;
-    if (namedOutputs.has(b.id)) {
-      outVar = namedOutputs.get(b.id)!;
-    } else if (info.outputs.length === 1) {
-      outVar = "x";
+    const outCount = b.outputShapes.length;
+    let outputVars: string[];
+    if (outCount <= 1) {
+      if (namedOutputs.has(b.id)) {
+        outputVars = [namedOutputs.get(b.id)!];
+      } else if (info.outputs.length === 1) {
+        outputVars = ["x"];
+      } else {
+        outputVars = [freshVar()];
+      }
     } else {
-      outVar = freshVar();
+      const base = freshVar();
+      outputVars = Array.from({ length: outCount }, (_, i) => `${base}_${i}`);
     }
-    blockOutputVar.set(b.id, outVar);
+    blockOutputVar.set(b.id, outputVars[0]);
 
-    forwardLines.push(`        let ${outVar} = ${expr};`);
+    const result = fn(b, inputVars, outputVars);
+    forwardLines.push(indentLines(result.forward, "        "));
   }
 
   const className = graph.groups[0]?.path[0] ?? "Model";
-
-  // Struct fields
-  const structFieldLines = fields.map((f) => `    ${f.fieldName}: ${f.fieldType},`);
-
-  // Constructors
-  // -- with_scopes: custom &str param per field for weight-loading scope names
-  const scopeParams = fields.map((f) => `        ${toSnakeCase(f.fieldName)}: &str,`);
-  const withScopesInitLines = fields.map((f) => {
-    const scopeParam = toSnakeCase(f.fieldName);
-    // Replace vb.pp("FieldName") from plugin init with weights.pp(param) reference
-    const expr = f.initExpr.replace(`vb.pp("${f.fieldName}")`, `weights.pp(${scopeParam})`);
-    return `        let ${f.fieldName} = ${expr};`;
-  });
-  const newOkFields = fields.map((f) => `            ${f.fieldName},`);
-  // -- new: convenience that auto-generates scope names from field names
-  const defaultScopeArgs = fields.map((f) => `        "${f.fieldName}",`);
 
   // Forward signature
   const forwardSignature =

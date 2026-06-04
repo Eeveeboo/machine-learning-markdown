@@ -17,6 +17,10 @@ function shapeComment(shapes: number[][]): string {
   return "  # " + shapes.map((s) => `[${s.join(", ")}]`).join(", ");
 }
 
+function indentLines(str: string, indent: string): string {
+  return str.split("\n").map((line) => line ? `${indent}${line}` : line).join("\n");
+}
+
 // ---------------------------------------------------------------------------
 // Code generation
 // ---------------------------------------------------------------------------
@@ -44,14 +48,12 @@ export function generatePytorch(graph: Graph, _registry: Map<string, BlockDef>):
 
   // __init__ lines
   const initLines: string[] = [];
-  const attrs = new Set<string>();
   for (const b of sorted) {
     if (b.type === "Input" || b.type === "Output") continue;
     const fn = getBlockCodegenWithFallback(b.type, "pytorch");
-    const result = fn(b, []);
-    if (result.attr && !attrs.has(result.attr.name)) {
-      attrs.add(result.attr.name);
-      initLines.push(`        self.${result.attr.name} = ${result.attr.init}`);
+    const result = fn(b, [], []);
+    if (typeof result.init === "string") {
+      initLines.push(indentLines(result.init, "        "));
     }
   }
 
@@ -110,23 +112,26 @@ export function generatePytorch(graph: Graph, _registry: Map<string, BlockDef>):
     }
 
     const fn = getBlockCodegenWithFallback(b.type, "pytorch");
-    const result = fn(b, inputVars);
-    const outExpr = result.forward;
-
-    // Determine output variable name
-    let outVar: string;
-    if (namedOutputs.has(b.id)) {
-      outVar = namedOutputs.get(b.id)!;
-    } else if (info.outputs.length === 1) {
-      // If only one consumer, reuse "x" pattern unless we need a named tensor
-      outVar = "x";
+    const outCount = b.outputShapes.length;
+    let outputVars: string[];
+    if (outCount <= 1) {
+      if (namedOutputs.has(b.id)) {
+        outputVars = [namedOutputs.get(b.id)!];
+      } else if (info.outputs.length === 1) {
+        outputVars = ["x"];
+      } else {
+        outputVars = [freshVar()];
+      }
     } else {
-      outVar = freshVar();
+      // Multi-output: generate N names with suffix
+      const base = freshVar();
+      outputVars = Array.from({ length: outCount }, (_, i) => `${base}_${i}`);
     }
-    blockOutputVar.set(b.id, outVar);
+    blockOutputVar.set(b.id, outputVars[0]);
 
+    const result = fn(b, inputVars, outputVars);
     const shapeAnn = shapeComment(b.outputShapes);
-    forwardLines.push(`        ${outVar} = ${outExpr}${shapeAnn}`);
+    forwardLines.push(indentLines(result.forward, "        ") + shapeAnn);
   }
 
   // Class name from graph groups or default

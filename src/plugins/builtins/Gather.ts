@@ -11,26 +11,23 @@ const Gather: BlockPlugin = {
   },
   paramCount: () => 0,
   codegen: {
-    pytorch(block, inputVars) {
-      const x = inputVars[0] ?? "x";
+    pytorch(block, inputVars, outputVars) {
       const av = block.params["axis"];
       const axis = av && av.kind === "number" ? av.value : 0;
       const idx = inputVars[1] ?? "index";
-      return { attr: null, forward: `torch.gather(${x}, ${axis}, ${idx})` };
+      return { forward: `${outputVars[0]} = torch.gather(${inputVars[0]}, ${axis}, ${idx})` };
     },
-    keras(block, inputVars) {
-      const x = inputVars[0] ?? "x";
+    keras(block, inputVars, outputVars) {
       const av = block.params["axis"];
       const axis = av && av.kind === "number" ? av.value : 0;
       const idx = inputVars[1] ?? "indices";
-      return { attr: null, forward: `tf.gather(${x}, ${idx}, axis=${axis})` };
+      return { forward: `${outputVars[0]} = tf.gather(${inputVars[0]}, ${idx}, axis=${axis})` };
     },
-    candle(block, inputVars) {
-      const x = inputVars[0] ?? "x";
+    candle(block, inputVars, outputVars) {
       const av = block.params["axis"];
       const axis = av && av.kind === "number" ? av.value : 0;
       const idx = inputVars[1] ?? "index";
-      return { attr: null, forward: `${x}.gather(&${idx}, ${axis})?` };
+      return { forward: `${outputVars[0]} = ${inputVars[0]}.gather(&${idx}, ${axis})?` };
     },
   },
 };

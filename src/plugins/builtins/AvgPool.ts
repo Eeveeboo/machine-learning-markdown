@@ -25,7 +25,7 @@ export const AvgPool: BlockPlugin = {
   },
 
   codegen: {
-    pytorch(block, inputVars) {
+    pytorch(block, inputVars, outputVars) {
       const kernel =
         (block.params["kernel"]?.kind === "number" ? block.params["kernel"].value : undefined) ??
         (block.params["kernel_size"]?.kind === "number" ? block.params["kernel_size"].value : undefined) ??
@@ -33,14 +33,13 @@ export const AvgPool: BlockPlugin = {
       const stride =
         (block.params["stride"]?.kind === "number" ? block.params["stride"].value : undefined) ??
         kernel;
-      const mainIn = inputVars[0] ?? "x";
       return {
-        attr: { name: block.id, init: `nn.AvgPool2d(${kernel}, stride=${stride})` },
-        forward: `self.${block.id}(${mainIn})`,
+        init: `self.${block.id} = nn.AvgPool2d(${kernel}, stride=${stride})`,
+        forward: `${outputVars[0]} = self.${block.id}(${inputVars[0]})`,
       };
     },
 
-    keras(block, inputVars) {
+    keras(block, inputVars, outputVars) {
       const kernel =
         (block.params["kernel"]?.kind === "number" ? block.params["kernel"].value : undefined) ??
         (block.params["kernel_size"]?.kind === "number" ? block.params["kernel_size"].value : undefined) ??
@@ -48,19 +47,15 @@ export const AvgPool: BlockPlugin = {
       const stride =
         (block.params["stride"]?.kind === "number" ? block.params["stride"].value : undefined) ??
         kernel;
-      const mainIn = inputVars[0] ?? "x";
       return {
-        attr: null,
-        forward: `keras.layers.AveragePooling2D(pool_size=${kernel}, strides=${stride})(${mainIn})`,
+        forward: `${outputVars[0]} = keras.layers.AveragePooling2D(pool_size=${kernel}, strides=${stride})(${inputVars[0]})`,
       };
     },
 
-    candle(_block, inputVars) {
+    candle(_block, inputVars, outputVars) {
       // Candle does not have a built-in avg_pool2d; emit a comment placeholder
-      const mainIn = inputVars[0] ?? "x";
       return {
-        attr: null,
-        forward: `/* AvgPool2d not directly supported in candle_nn::ops */ ${mainIn}.clone()?`,
+        forward: `${outputVars[0]} = /* AvgPool2d not directly supported in candle_nn::ops */ ${inputVars[0]}.clone()?`,
       };
     },
   },

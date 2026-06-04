@@ -24,9 +24,9 @@ export function getBlockCodegen(
   return codegenRegistry.get(blockType)?.[target];
 }
 
-export function fallbackCodegen(block: Block, _inputVars: string[]): BlockCodegenResult {
+export function fallbackCodegen(block: Block, _inputVars: string[], _outputVars: string[]): BlockCodegenResult {
   return {
-    attr: null,
+    init: null,
     forward: `# TODO: codegen not implemented for ${block.type} (target: unknown)`,
   };
 }
@@ -39,17 +39,17 @@ export function getBlockCodegenWithFallback(
 }
 
 export function fallbackCodegenFor(target: string): BlockCodegenFn {
-  return (block: Block, inputVars: string[]): BlockCodegenResult => {
+  return (block: Block, inputVars: string[], _outputVars: string[]): BlockCodegenResult => {
     const mainIn = inputVars[0] ?? "x";
     const comment = `/* ${block.type} — custom block, passthrough in generated code */`;
     switch (target) {
       case "candle":
       case "pytorch":
-        return { attr: null, forward: `${mainIn} ${comment}` };
+        return { init: null, forward: `${mainIn} ${comment}` };
       case "keras":
-        return { attr: null, forward: mainIn };
+        return { init: null, forward: mainIn };
       default:
-        return { attr: null, forward: `${mainIn} ${comment}` };
+        return { init: null, forward: `${mainIn} ${comment}` };
     }
   };
 }

@@ -24,7 +24,7 @@ export const MaxPool: BlockPlugin = {
   },
 
   codegen: {
-    pytorch(block, inputVars) {
+    pytorch(block, inputVars, outputVars) {
       const kernel =
         (block.params["kernel"]?.kind === "number" ? block.params["kernel"].value : undefined) ??
         (block.params["kernel_size"]?.kind === "number" ? block.params["kernel_size"].value : undefined) ??
@@ -32,14 +32,13 @@ export const MaxPool: BlockPlugin = {
       const stride =
         (block.params["stride"]?.kind === "number" ? block.params["stride"].value : undefined) ??
         kernel;
-      const mainIn = inputVars[0] ?? "x";
       return {
-        attr: { name: block.id, init: `nn.MaxPool2d(${kernel}, stride=${stride})` },
-        forward: `self.${block.id}(${mainIn})`,
+        init: `self.${block.id} = nn.MaxPool2d(${kernel}, stride=${stride})`,
+        forward: `${outputVars[0]} = self.${block.id}(${inputVars[0]})`,
       };
     },
 
-    keras(block, inputVars) {
+    keras(block, inputVars, outputVars) {
       const kernel =
         (block.params["kernel"]?.kind === "number" ? block.params["kernel"].value : undefined) ??
         (block.params["kernel_size"]?.kind === "number" ? block.params["kernel_size"].value : undefined) ??
@@ -47,14 +46,13 @@ export const MaxPool: BlockPlugin = {
       const stride =
         (block.params["stride"]?.kind === "number" ? block.params["stride"].value : undefined) ??
         kernel;
-      const mainIn = inputVars[0] ?? "x";
       return {
-        attr: null,
-        forward: `keras.layers.MaxPooling2D(pool_size=${kernel}, strides=${stride})(${mainIn})`,
+        init: null,
+        forward: `${outputVars[0]} = keras.layers.MaxPooling2D(pool_size=${kernel}, strides=${stride})(${inputVars[0]})`,
       };
     },
 
-    candle(block, inputVars) {
+    candle(block, inputVars, outputVars) {
       const kernel =
         (block.params["kernel"]?.kind === "number" ? block.params["kernel"].value : undefined) ??
         (block.params["kernel_size"]?.kind === "number" ? block.params["kernel_size"].value : undefined) ??
@@ -62,10 +60,9 @@ export const MaxPool: BlockPlugin = {
       const stride =
         (block.params["stride"]?.kind === "number" ? block.params["stride"].value : undefined) ??
         kernel;
-      const mainIn = inputVars[0] ?? "x";
       return {
-        attr: null,
-        forward: `candle_nn::ops::max_pool2d(&${mainIn}, ${kernel}, ${stride})?`,
+        init: null,
+        forward: `${outputVars[0]} = candle_nn::ops::max_pool2d(&${inputVars[0]}, ${kernel}, ${stride})?`,
       };
     },
   },

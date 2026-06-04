@@ -22,32 +22,28 @@ const Reshape: BlockPlugin = {
   },
   paramCount: () => 0,
   codegen: {
-    pytorch(block, inputVars) {
-      const x = inputVars[0] ?? "x";
+    pytorch(block, inputVars, outputVars) {
       const shapeParam = block.params["shape"];
       if (shapeParam && shapeParam.kind === "shape") {
         const dims = shapeParam.dims.join(", ");
         return {
-          attr: null,
-          forward: `${x}.reshape(${x}.size(0), ${dims})`,
+          forward: `${outputVars[0]} = ${inputVars[0]}.reshape(${inputVars[0]}.size(0), ${dims})`,
         };
       }
-      return { attr: null, forward: `${x}.reshape(${x}.size(0), -1)` };
+      return { forward: `${outputVars[0]} = ${inputVars[0]}.reshape(${inputVars[0]}.size(0), -1)` };
     },
-    keras(block, inputVars) {
-      const x = inputVars[0] ?? "x";
+    keras(block, inputVars, outputVars) {
       const shapeParam = block.params["shape"];
       if (shapeParam && shapeParam.kind === "shape") {
         const dims = shapeParam.dims.join(", ");
-        return { attr: null, forward: `keras.layers.Reshape((${dims},))(${x})` };
+        return { forward: `${outputVars[0]} = keras.layers.Reshape((${dims},))(${inputVars[0]})` };
       }
-      return { attr: null, forward: `keras.layers.Reshape((-1,))(${x})` };
+      return { forward: `${outputVars[0]} = keras.layers.Reshape((-1,))(${inputVars[0]})` };
     },
-    candle(block, inputVars) {
-      const x = inputVars[0] ?? "x";
+    candle(block, inputVars, outputVars) {
       const dims = getNumList(block.params, "shape");
       const shape = dims.length ? dims.join(", ") : "0";
-      return { attr: null, forward: `${x}.reshape(&[${shape}])?` };
+      return { forward: `${outputVars[0]} = ${inputVars[0]}.reshape(&[${shape}])?` };
     },
   },
 };

@@ -24,38 +24,33 @@ const Pad: BlockPlugin = {
   },
   paramCount: () => 0,
   codegen: {
-    pytorch(block, inputVars) {
-      const x = inputVars[0] ?? "x";
+    pytorch(block, inputVars, outputVars) {
       const padding = block.params["padding"];
       if (padding && padding.kind === "list") {
         const vals = padding.items
           .filter((i) => i.kind === "number")
           .map((i) => (i as { kind: "number"; value: number }).value);
-        return { attr: null, forward: `torch.nn.functional.pad(${x}, (${vals.join(", ")}))` };
+        return { forward: `${outputVars[0]} = torch.nn.functional.pad(${inputVars[0]}, (${vals.join(", ")}))` };
       }
-      return { attr: null, forward: `torch.nn.functional.pad(${x}, (0, 0))` };
+      return { forward: `${outputVars[0]} = torch.nn.functional.pad(${inputVars[0]}, (0, 0))` };
     },
-    keras(block, inputVars) {
-      const x = inputVars[0] ?? "x";
+    keras(block, inputVars, outputVars) {
       const p = getNumList(block.params, "padding");
       if (p.length >= 4) {
         return {
-          attr: null,
-          forward: `keras.layers.ZeroPadding2D(padding=((${p[0]}, ${p[1]}), (${p[2]}, ${p[3]})))(${x})`,
+          forward: `${outputVars[0]} = keras.layers.ZeroPadding2D(padding=((${p[0]}, ${p[1]}), (${p[2]}, ${p[3]})))(${inputVars[0]})`,
         };
       }
-      return { attr: null, forward: `keras.layers.ZeroPadding2D()(${x})` };
+      return { forward: `${outputVars[0]} = keras.layers.ZeroPadding2D()(${inputVars[0]})` };
     },
-    candle(block, inputVars) {
-      const x = inputVars[0] ?? "x";
+    candle(block, inputVars, outputVars) {
       const p = getNumList(block.params, "padding");
       if (p.length >= 4) {
         return {
-          attr: null,
-          forward: `${x}.pad_with_zeros(2, ${p[0]}, ${p[1]})?.pad_with_zeros(3, ${p[2]}, ${p[3]})?`,
+          forward: `${outputVars[0]} = ${inputVars[0]}.pad_with_zeros(2, ${p[0]}, ${p[1]})?.pad_with_zeros(3, ${p[2]}, ${p[3]})?`,
         };
       }
-      return { attr: null, forward: `${x}.pad_with_zeros(2, 0, 0)?` };
+      return { forward: `${outputVars[0]} = ${inputVars[0]}.pad_with_zeros(2, 0, 0)?` };
     },
   },
 };

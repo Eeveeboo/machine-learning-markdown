@@ -15,27 +15,22 @@ export const GlobalAvgPool: BlockPlugin = {
   },
 
   codegen: {
-    pytorch(block, inputVars) {
-      const mainIn = inputVars[0] ?? "x";
+    pytorch(block, inputVars, outputVars) {
       return {
-        attr: { name: block.id, init: `nn.AdaptiveAvgPool2d(1)` },
-        forward: `self.${block.id}(${mainIn})`,
+        init: `self.${block.id} = nn.AdaptiveAvgPool2d(1)`,
+        forward: `${outputVars[0]} = self.${block.id}(${inputVars[0]})`,
       };
     },
 
-    keras(_block, inputVars) {
-      const mainIn = inputVars[0] ?? "x";
+    keras(_block, inputVars, outputVars) {
       return {
-        attr: null,
-        forward: `keras.layers.GlobalAveragePooling2D()(${mainIn})`,
+        forward: `${outputVars[0]} = keras.layers.GlobalAveragePooling2D()(${inputVars[0]})`,
       };
     },
 
-    candle(_block, inputVars) {
-      const mainIn = inputVars[0] ?? "x";
+    candle(_block, inputVars, outputVars) {
       return {
-        attr: null,
-        forward: `${mainIn}.mean_keepdim(candle_core::D::Minus1)?.mean_keepdim(candle_core::D::Minus2)?`,
+        forward: `${outputVars[0]} = ${inputVars[0]}.mean_keepdim(candle_core::D::Minus1)?.mean_keepdim(candle_core::D::Minus2)?`,
       };
     },
   },

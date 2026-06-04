@@ -12,18 +12,14 @@ const MatMul: BlockPlugin = {
   },
   paramCount: () => 0,
   codegen: {
-    pytorch(_block, inputVars) {
-      const a = inputVars[0] ?? "x";
-      const b = inputVars[1] ?? "x";
-      return { attr: null, forward: `torch.matmul(${a}, ${b})` };
+    pytorch(_block, inputVars, outputVars) {
+      return { forward: `${outputVars[0]} = torch.matmul(${inputVars[0]}, ${inputVars[1]})` };
     },
-    keras(_block, inputVars) {
-      return { attr: null, forward: `keras.layers.Dot(axes=-1)([${inputVars.join(", ")}])` };
+    keras(_block, inputVars, outputVars) {
+      return { forward: `${outputVars[0]} = keras.layers.Dot(axes=-1)([${inputVars.join(", ")}])` };
     },
-    candle(_block, inputVars) {
-      const a = inputVars[0] ?? "x";
-      const b = inputVars[1] ?? "x";
-      return { attr: null, forward: `${a}.matmul(&${b})?` };
+    candle(_block, inputVars, outputVars) {
+      return { forward: `${outputVars[0]} = ${inputVars[0]}.matmul(&${inputVars[1]})?` };
     },
   },
 };
