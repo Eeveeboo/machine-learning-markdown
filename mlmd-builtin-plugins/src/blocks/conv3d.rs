@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use mlmd_core::types::*;
+use mlmd_plugin_api::*;
 
 use crate::helpers::{conv_out, get_num};
 
@@ -14,43 +14,19 @@ use crate::helpers::{conv_out, get_num};
 // BlockDef for shape inference
 // ---------------------------------------------------------------------------
 
-struct Conv3dBlockDef;
+struct Conv3d;
 
-impl BlockDef for Conv3dBlockDef {
-    fn name(&self) -> &str {
-        "Conv3d"
+impl Plugin for Conv3d {
+    fn params(&self) -> Vec<ParamSpec> {
+        vec![
+            ParamSpec::number("filters").required(),
+            ParamSpec::number("kernel").required(),
+            ParamSpec::number("stride").optional(),
+            ParamSpec::number("padding").optional(),
+        ]
     }
-
-    fn params(&self) -> &[ParamSpec] {
-        static PARAMS: std::sync::LazyLock<Vec<ParamSpec>> = std::sync::LazyLock::new(|| {
-            vec![
-                ParamSpec {
-                    name: "filters".into(),
-                    param_type: ParamType::Number,
-                    required: true,
-                    default: None,
-                },
-                ParamSpec {
-                    name: "kernel".into(),
-                    param_type: ParamType::Number,
-                    required: true,
-                    default: None,
-                },
-                ParamSpec {
-                    name: "stride".into(),
-                    param_type: ParamType::Number,
-                    required: false,
-                    default: None,
-                },
-                ParamSpec {
-                    name: "padding".into(),
-                    param_type: ParamType::Number,
-                    required: false,
-                    default: None,
-                },
-            ]
-        });
-        &PARAMS
+    fn name(&self) -> &'static str {
+        "Conv3d"
     }
 
     fn infer_shape(
@@ -94,23 +70,72 @@ impl BlockDef for Conv3dBlockDef {
     fn show_depth(&self) -> bool {
         true
     }
+
+    fn codegen(
+        &self,
+        target: &str,
+        block: &Block,
+        input_vars: &[String],
+        output_vars: &[String],
+    ) -> Option<BlockCodegenResult> {
+        match target {
+            "pytorch" => Some({
+                let in_ch = get_in_ch(block);
+                let filters = get_filters(block);
+                let kernel = get_kernel(block);
+                let stride = get_stride(block);
+                let padding = get_padding(block);
+                BlockCodegenResult {
+                    init: Some(CandleInitOrString::Plain(format!(
+                        "self.{} = nn.Conv3d({}, {}, {}, stride={}, padding={})",
+                        block.id, in_ch, filters, kernel, stride, padding
+                    ))),
+                    forward: format!(
+                        "{} = self.{}({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        block.id,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "keras" => Some({
+                let filters = get_filters(block);
+                let kernel = get_kernel(block);
+                let stride = get_stride(block);
+                let padding_str = if get_padding(block) == 0 {
+                    "valid"
+                } else {
+                    "same"
+                };
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = keras.layers.Conv3D({}, {}, strides={}, padding='{}')({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        filters,
+                        kernel,
+                        stride,
+                        padding_str,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "candle" => Some({
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = unimplemented!(\"Conv3d not supported in candle\");  // {}",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            _ => None,
+        }
+    }
 }
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
-
-pub fn register() {
-    register_block(Box::new(Conv3dBlockDef));
-
-    register_block_codegen("Conv3d", "pytorch", pytorch_codegen);
-    register_block_codegen("Conv3d", "keras", keras_codegen);
-    register_block_codegen("Conv3d", "candle", candle_codegen);
-}
-
-// ---------------------------------------------------------------------------
-// Codegen helpers
-// ---------------------------------------------------------------------------
+register_plugin!(Conv3d);
 
 fn get_in_ch(block: &Block) -> usize {
     if let Some(shape) = block.input_shapes.first() {
@@ -162,80 +187,6 @@ fn get_padding(block: &Block) -> usize {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Codegen functions
-// ---------------------------------------------------------------------------
-
-fn pytorch_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let in_ch = get_in_ch(block);
-    let filters = get_filters(block);
-    let kernel = get_kernel(block);
-    let stride = get_stride(block);
-    let padding = get_padding(block);
-    BlockCodegenResult {
-        init: Some(CandleInitOrString::Plain(format!(
-            "self.{} = nn.Conv3d({}, {}, {}, stride={}, padding={})",
-            block.id, in_ch, filters, kernel, stride, padding
-        ))),
-        forward: format!(
-            "{} = self.{}({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            block.id,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-fn keras_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let filters = get_filters(block);
-    let kernel = get_kernel(block);
-    let stride = get_stride(block);
-    let padding_str = if get_padding(block) == 0 {
-        "valid"
-    } else {
-        "same"
-    };
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = keras.layers.Conv3D({}, {}, strides={}, padding='{}')({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            filters,
-            kernel,
-            stride,
-            padding_str,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-fn candle_codegen(
-    _block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = unimplemented!(\"Conv3d not supported in candle\");  // {}",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -243,7 +194,7 @@ mod tests {
 
     #[test]
     fn test_conv3d_block_def() {
-        let def = Conv3dBlockDef;
+        let def = Conv3d;
         assert_eq!(def.name(), "Conv3d");
 
         let mut p = HashMap::new();

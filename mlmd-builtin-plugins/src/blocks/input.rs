@@ -4,10 +4,8 @@
 // Port of src/plugins/builtins/Input.ts
 // ---------------------------------------------------------------------------
 
+use mlmd_plugin_api::*;
 use std::collections::HashMap;
-use std::sync::LazyLock;
-
-use mlmd_core::types::*;
 
 use crate::helpers::require_shape;
 
@@ -15,23 +13,14 @@ use crate::helpers::require_shape;
 // BlockDef for shape inference
 // ---------------------------------------------------------------------------
 
-struct InputBlockDef;
+struct Input;
 
-impl BlockDef for InputBlockDef {
-    fn name(&self) -> &str {
-        "Input"
+impl Plugin for Input {
+    fn params(&self) -> Vec<ParamSpec> {
+        vec![ParamSpec::shape("shape").required()]
     }
-
-    fn params(&self) -> &[ParamSpec] {
-        static PARAMS: LazyLock<Vec<ParamSpec>> = LazyLock::new(|| {
-            vec![ParamSpec {
-                name: "shape".into(),
-                param_type: ParamType::Shape,
-                required: true,
-                default: None,
-            }]
-        });
-        &PARAMS
+    fn name(&self) -> &'static str {
+        "Input"
     }
 
     fn infer_shape(
@@ -45,60 +34,43 @@ impl BlockDef for InputBlockDef {
     fn show_depth(&self) -> bool {
         false
     }
-}
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
+    fn num_inputs(&self) -> Option<usize> {
+        Some(0)
+    }
 
-pub fn register() {
-    register_block(Box::new(InputBlockDef));
-
-    register_block_codegen("Input", "pytorch", pytorch_codegen);
-    register_block_codegen("Input", "keras", keras_codegen);
-    register_block_codegen("Input", "candle", candle_codegen);
-}
-
-// ---------------------------------------------------------------------------
-// Codegen functions
-// ---------------------------------------------------------------------------
-
-fn pytorch_codegen(
-    _block: &Block,
-    input_vars: &[String],
-    _output_vars: &[String],
-) -> BlockCodegenResult {
-    BlockCodegenResult {
-        init: None,
-        forward: input_vars.first().cloned().unwrap_or_default(),
+    fn codegen(
+        &self,
+        target: &str,
+        _block: &Block,
+        input_vars: &[String],
+        _output_vars: &[String],
+    ) -> Option<BlockCodegenResult> {
+        match target {
+            "pytorch" => Some({
+                BlockCodegenResult {
+                    init: None,
+                    forward: input_vars.first().cloned().unwrap_or_default(),
+                }
+            }),
+            "keras" => Some({
+                BlockCodegenResult {
+                    init: None,
+                    forward: String::new(),
+                }
+            }),
+            "candle" => Some({
+                BlockCodegenResult {
+                    init: None,
+                    forward: String::new(),
+                }
+            }),
+            _ => None,
+        }
     }
 }
 
-fn keras_codegen(
-    _block: &Block,
-    _input_vars: &[String],
-    _output_vars: &[String],
-) -> BlockCodegenResult {
-    BlockCodegenResult {
-        init: None,
-        forward: String::new(),
-    }
-}
-
-fn candle_codegen(
-    _block: &Block,
-    _input_vars: &[String],
-    _output_vars: &[String],
-) -> BlockCodegenResult {
-    BlockCodegenResult {
-        init: None,
-        forward: String::new(),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+register_plugin!(Input);
 
 #[cfg(test)]
 mod tests {
@@ -106,7 +78,7 @@ mod tests {
 
     #[test]
     fn test_input_block_def() {
-        let def = InputBlockDef;
+        let def = Input;
         assert_eq!(def.name(), "Input");
         assert!(!def.show_depth());
 

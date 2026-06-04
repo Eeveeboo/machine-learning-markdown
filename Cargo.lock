@@ -1112,6 +1112,7 @@ name = "mlmd-builtin-plugins"
 version = "0.1.0"
 dependencies = [
  "mlmd-core",
+ "mlmd-plugin-api",
 ]
 
 [[package]]
@@ -1130,7 +1131,7 @@ name = "mlmd-example-plugin"
 version = "0.1.0"
 dependencies = [
  "mlmd-core",
- "serde_json",
+ "mlmd-plugin-api",
 ]
 
 [[package]]
@@ -1146,6 +1147,22 @@ name = "mlmd-extension-zed"
 version = "0.1.0"
 dependencies = [
  "zed_extension_api",
+]
+
+[[package]]
+name = "mlmd-plugin-api"
+version = "0.1.0"
+dependencies = [
+ "mlmd-core",
+ "mlmd-plugin-api-macros",
+]
+
+[[package]]
+name = "mlmd-plugin-api-macros"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn",
 ]
 
 [[package]]

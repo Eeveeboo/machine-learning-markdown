@@ -6,21 +6,20 @@
 
 use std::collections::HashMap;
 
-use mlmd_core::types::*;
+use mlmd_plugin_api::*;
 
 // ---------------------------------------------------------------------------
 // BlockDef for shape inference
 // ---------------------------------------------------------------------------
 
-struct ReLUBlockDef;
+struct ReLU;
 
-impl BlockDef for ReLUBlockDef {
-    fn name(&self) -> &str {
-        "ReLU"
+impl Plugin for ReLU {
+    fn params(&self) -> Vec<ParamSpec> {
+        vec![]
     }
-
-    fn params(&self) -> &[ParamSpec] {
-        &[]
+    fn name(&self) -> &'static str {
+        "ReLU"
     }
 
     fn infer_shape(
@@ -37,76 +36,55 @@ impl BlockDef for ReLUBlockDef {
     fn show_depth(&self) -> bool {
         false
     }
-}
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
-
-pub fn register() {
-    register_block(Box::new(ReLUBlockDef));
-
-    register_block_codegen("ReLU", "pytorch", pytorch_codegen);
-    register_block_codegen("ReLU", "keras", keras_codegen);
-    register_block_codegen("ReLU", "candle", candle_codegen);
-}
-
-// ---------------------------------------------------------------------------
-// Codegen functions
-// ---------------------------------------------------------------------------
-
-fn pytorch_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    BlockCodegenResult {
-        init: Some(CandleInitOrString::Plain(format!(
-            "self.{} = nn.ReLU()",
-            block.id
-        ))),
-        forward: format!(
-            "{} = self.{}({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            block.id,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
+    fn codegen(
+        &self,
+        target: &str,
+        block: &Block,
+        input_vars: &[String],
+        output_vars: &[String],
+    ) -> Option<BlockCodegenResult> {
+        match target {
+            "pytorch" => Some({
+                BlockCodegenResult {
+                    init: Some(CandleInitOrString::Plain(format!(
+                        "self.{} = nn.ReLU()",
+                        block.id
+                    ))),
+                    forward: format!(
+                        "{} = self.{}({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        block.id,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "keras" => Some({
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = keras.layers.ReLU()({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "candle" => Some({
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = {}.relu()?;",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            _ => None,
+        }
     }
 }
 
-fn keras_codegen(
-    _block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = keras.layers.ReLU()({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-fn candle_codegen(
-    _block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = {}.relu()?;",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+register_plugin!(ReLU);
 
 #[cfg(test)]
 mod tests {
@@ -114,7 +92,7 @@ mod tests {
 
     #[test]
     fn test_relu_block_def() {
-        let def = ReLUBlockDef;
+        let def = ReLU;
         assert_eq!(def.name(), "ReLU");
         assert!(!def.show_depth());
         assert!(def.params().is_empty());

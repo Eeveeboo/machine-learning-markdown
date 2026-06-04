@@ -2,11 +2,11 @@
 name = "mlmd-example-plugin"
 version = "0.1.0"
 edition = "2021"
-description = "Example NNML plugin demonstrating the BlockDef + codegen + FFI pattern"
+description = "Example NNML plugin demonstrating the mlmd-plugin-api"
 
 [lib]
 crate-type = ["lib", "cdylib"]
 
 [dependencies]
 mlmd-core = { path = "../mlmd-core" }
-serde_json = "1"
+mlmd-plugin-api = { path = "../mlmd-plugin-api" }

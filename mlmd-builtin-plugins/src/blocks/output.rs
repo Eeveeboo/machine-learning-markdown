@@ -6,21 +6,20 @@
 
 use std::collections::HashMap;
 
-use mlmd_core::types::*;
+use mlmd_plugin_api::*;
 
 // ---------------------------------------------------------------------------
 // BlockDef for shape inference
 // ---------------------------------------------------------------------------
 
-struct OutputBlockDef;
+struct Output;
 
-impl BlockDef for OutputBlockDef {
-    fn name(&self) -> &str {
-        "Output"
+impl Plugin for Output {
+    fn params(&self) -> Vec<ParamSpec> {
+        vec![]
     }
-
-    fn params(&self) -> &[ParamSpec] {
-        &[]
+    fn name(&self) -> &'static str {
+        "Output"
     }
 
     fn infer_shape(
@@ -45,69 +44,48 @@ impl BlockDef for OutputBlockDef {
     fn show_depth(&self) -> bool {
         false
     }
-}
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
-
-pub fn register() {
-    register_block(Box::new(OutputBlockDef));
-
-    register_block_codegen("Output", "pytorch", pytorch_codegen);
-    register_block_codegen("Output", "keras", keras_codegen);
-    register_block_codegen("Output", "candle", candle_codegen);
-}
-
-// ---------------------------------------------------------------------------
-// Codegen functions
-// ---------------------------------------------------------------------------
-
-fn pytorch_codegen(
-    _block: &Block,
-    input_vars: &[String],
-    _output_vars: &[String],
-) -> BlockCodegenResult {
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "return {}",
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?")
-        ),
+    fn codegen(
+        &self,
+        target: &str,
+        _block: &Block,
+        input_vars: &[String],
+        _output_vars: &[String],
+    ) -> Option<BlockCodegenResult> {
+        match target {
+            "pytorch" => Some({
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "return {}",
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?")
+                    ),
+                }
+            }),
+            "keras" => Some({
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "return {}",
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?")
+                    ),
+                }
+            }),
+            "candle" => Some({
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "Ok({})",
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?")
+                    ),
+                }
+            }),
+            _ => None,
+        }
     }
 }
 
-fn keras_codegen(
-    _block: &Block,
-    input_vars: &[String],
-    _output_vars: &[String],
-) -> BlockCodegenResult {
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "return {}",
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?")
-        ),
-    }
-}
-
-fn candle_codegen(
-    _block: &Block,
-    input_vars: &[String],
-    _output_vars: &[String],
-) -> BlockCodegenResult {
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "Ok({})",
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?")
-        ),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+register_plugin!(Output);
 
 #[cfg(test)]
 mod tests {
@@ -115,7 +93,7 @@ mod tests {
 
     #[test]
     fn test_output_block_def() {
-        let def = OutputBlockDef;
+        let def = Output;
         assert_eq!(def.name(), "Output");
         assert!(!def.show_depth());
 

@@ -1,0 +1,13 @@
+[package]
+name = "mlmd-plugin-api"
+version = "0.1.0"
+edition = "2021"
+description = "Clean plugin API for NNML — inspired by zed_extension_api"
+
+[dependencies]
+mlmd-core = { path = "../mlmd-core" }
+mlmd-plugin-api-macros = { path = "../mlmd-plugin-api-macros" }
+
+[features]
+default = []
+dynamic = ["mlmd-core/dynamic-plugins"]

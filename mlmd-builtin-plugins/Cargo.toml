@@ -8,3 +8,4 @@ crate-type = ["lib", "cdylib"]
 
 [dependencies]
 mlmd-core = { path = "../mlmd-core" }
+mlmd-plugin-api = { path = "../mlmd-plugin-api" }

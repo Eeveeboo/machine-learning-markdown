@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use mlmd_core::types::*;
+use mlmd_plugin_api::*;
 
 use crate::helpers::get_num;
 
@@ -14,23 +14,14 @@ use crate::helpers::get_num;
 // BlockDef for shape inference
 // ---------------------------------------------------------------------------
 
-struct BatchNormBlockDef;
+struct BatchNorm;
 
-impl BlockDef for BatchNormBlockDef {
-    fn name(&self) -> &str {
-        "BatchNorm"
+impl Plugin for BatchNorm {
+    fn params(&self) -> Vec<ParamSpec> {
+        vec![ParamSpec::number("num_features").optional()]
     }
-
-    fn params(&self) -> &[ParamSpec] {
-        static PARAMS: std::sync::LazyLock<Vec<ParamSpec>> = std::sync::LazyLock::new(|| {
-            vec![ParamSpec {
-                name: "num_features".into(),
-                param_type: ParamType::Number,
-                required: false,
-                default: None,
-            }]
-        });
-        &PARAMS
+    fn name(&self) -> &'static str {
+        "BatchNorm"
     }
 
     fn infer_shape(
@@ -58,103 +49,82 @@ impl BlockDef for BatchNormBlockDef {
     fn show_depth(&self) -> bool {
         false
     }
-}
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
-
-pub fn register() {
-    register_block(Box::new(BatchNormBlockDef));
-
-    register_block_codegen("BatchNorm", "pytorch", pytorch_codegen);
-    register_block_codegen("BatchNorm", "keras", keras_codegen);
-    register_block_codegen("BatchNorm", "candle", candle_codegen);
-}
-
-// ---------------------------------------------------------------------------
-// Codegen functions
-// ---------------------------------------------------------------------------
-
-fn pytorch_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let input_shape = block.input_shapes.first().cloned().unwrap_or_default();
-    let dims = input_shape.len();
-    let init_expr = if dims <= 2 {
-        let num = input_shape.last().copied().unwrap_or(0);
-        format!("self.{} = nn.BatchNorm1d({})", block.id, num)
-    } else {
-        let num = if dims >= 3 {
-            input_shape[input_shape.len() - 3]
-        } else if dims >= 2 {
-            input_shape[1]
-        } else {
-            0
-        };
-        format!("self.{} = nn.BatchNorm2d({})", block.id, num)
-    };
-    BlockCodegenResult {
-        init: Some(CandleInitOrString::Plain(init_expr)),
-        forward: format!(
-            "{} = self.{}({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            block.id,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
+    fn codegen(
+        &self,
+        target: &str,
+        block: &Block,
+        input_vars: &[String],
+        output_vars: &[String],
+    ) -> Option<BlockCodegenResult> {
+        match target {
+            "pytorch" => Some({
+                let input_shape = block.input_shapes.first().cloned().unwrap_or_default();
+                let dims = input_shape.len();
+                let init_expr = if dims <= 2 {
+                    let num = input_shape.last().copied().unwrap_or(0);
+                    format!("self.{} = nn.BatchNorm1d({})", block.id, num)
+                } else {
+                    let num = if dims >= 3 {
+                        input_shape[input_shape.len() - 3]
+                    } else if dims >= 2 {
+                        input_shape[1]
+                    } else {
+                        0
+                    };
+                    format!("self.{} = nn.BatchNorm2d({})", block.id, num)
+                };
+                BlockCodegenResult {
+                    init: Some(CandleInitOrString::Plain(init_expr)),
+                    forward: format!(
+                        "{} = self.{}({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        block.id,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "keras" => Some({
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = keras.layers.BatchNormalization()({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "candle" => Some({
+                let input_shape = block.input_shapes.first().cloned().unwrap_or_default();
+                let features = if input_shape.len() >= 4 {
+                    input_shape[1]
+                } else if input_shape.len() >= 3 {
+                    input_shape[0]
+                } else {
+                    input_shape.last().copied().unwrap_or(0)
+                };
+                BlockCodegenResult {
+                    init: Some(CandleInitOrString::Candle(CandleInit {
+                        field: format!("{}: candle_nn::BatchNorm", block.id),
+                        body: format!(
+                            "let {} = candle_nn::batch_norm({}, 1e-5, vb.pp(\"{}\"))?;",
+                            block.id, features, block.id
+                        ),
+                    })),
+                    forward: format!(
+                        "{} = self.{}.forward_t(&{}, false)?;",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        block.id,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            _ => None,
+        }
     }
 }
 
-fn keras_codegen(
-    _block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = keras.layers.BatchNormalization()({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-fn candle_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let input_shape = block.input_shapes.first().cloned().unwrap_or_default();
-    let features = if input_shape.len() >= 4 {
-        input_shape[1]
-    } else if input_shape.len() >= 3 {
-        input_shape[0]
-    } else {
-        input_shape.last().copied().unwrap_or(0)
-    };
-    BlockCodegenResult {
-        init: Some(CandleInitOrString::Candle(CandleInit {
-            field: format!("{}: candle_nn::BatchNorm", block.id),
-            body: format!(
-                "let {} = candle_nn::batch_norm({}, 1e-5, vb.pp(\"{}\"))?;",
-                block.id, features, block.id
-            ),
-        })),
-        forward: format!(
-            "{} = self.{}.forward_t(&{}, false)?;",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            block.id,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+register_plugin!(BatchNorm);
 
 #[cfg(test)]
 mod tests {
@@ -162,7 +132,7 @@ mod tests {
 
     #[test]
     fn test_batch_norm_block_def() {
-        let def = BatchNormBlockDef;
+        let def = BatchNorm;
         assert_eq!(def.name(), "BatchNorm");
 
         let shapes = def

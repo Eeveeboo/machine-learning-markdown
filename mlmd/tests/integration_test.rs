@@ -347,15 +347,20 @@ fn test_dynamic_plugin_loading() {
     mlmd_core::codegen::targets::register_all_codegen_targets();
 
     // Load the dynamic plugin
-    let block_name = mlmd_core::plugin::adapter::register_dynamic_plugin(
-        plugin_path.to_str().unwrap(),
-    )
-    .expect("Failed to register dynamic plugin");
-    assert_eq!(block_name, "Scale", "Dynamic plugin should advertise 'Scale'");
+    let block_name =
+        mlmd_core::plugin::adapter::register_dynamic_plugin(plugin_path.to_str().unwrap())
+            .expect("Failed to register dynamic plugin");
+    assert_eq!(
+        block_name, "Scale",
+        "Dynamic plugin should advertise 'Scale'"
+    );
 
     // Verify the block is registered in the BlockDef registry
     let def = mlmd_core::block::registry::lookup_block("Scale");
-    assert!(def.is_some(), "Scale should be registered via dynamic plugin");
+    assert!(
+        def.is_some(),
+        "Scale should be registered via dynamic plugin"
+    );
     assert_eq!(def.unwrap().name(), "Scale");
 
     // Verify codegen functions are registered
@@ -393,17 +398,17 @@ fn test_dynamic_plugin_loading() {
         .iter()
         .find(|b| b.block_type == "Scale")
         .expect("Scale block should exist");
-    assert_eq!(
-        scale_b.output_shapes,
-        vec![vec![1, 3, 32, 32]]
-    );
+    assert_eq!(scale_b.output_shapes, vec![vec![1, 3, 32, 32]]);
 
     // Verify codegen works through FFI
     for target_name in &["pytorch", "candle", "keras"] {
         let result = mlmd_core::codegen::target::with_target(target_name, |target| {
             target.generate(&shape_result.graph)
         });
-        assert!(result.is_some(), "Codegen target '{target_name}' should exist");
+        assert!(
+            result.is_some(),
+            "Codegen target '{target_name}' should exist"
+        );
         let files = result.unwrap();
         assert!(
             !files.is_empty(),
@@ -419,10 +424,7 @@ fn test_dynamic_plugin_loading() {
 fn find_example_plugin_cdylib() -> Option<PathBuf> {
     let root = workspace_root();
 
-    let lib_name = format!(
-        "libmlmd_example_plugin{}",
-        std::env::consts::DLL_SUFFIX
-    );
+    let lib_name = format!("libmlmd_example_plugin{}", std::env::consts::DLL_SUFFIX);
 
     // Check debug first, then release
     for profile in &["debug", "release"] {

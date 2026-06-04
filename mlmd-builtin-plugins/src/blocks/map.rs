@@ -6,21 +6,20 @@
 
 use std::collections::HashMap;
 
-use mlmd_core::types::*;
+use mlmd_plugin_api::*;
 
 // ---------------------------------------------------------------------------
 // BlockDef for shape inference
 // ---------------------------------------------------------------------------
 
-struct MapBlockDef;
+struct Map;
 
-impl BlockDef for MapBlockDef {
-    fn name(&self) -> &str {
-        "Map"
+impl Plugin for Map {
+    fn params(&self) -> Vec<ParamSpec> {
+        vec![]
     }
-
-    fn params(&self) -> &[ParamSpec] {
-        &[]
+    fn name(&self) -> &'static str {
+        "Map"
     }
 
     fn infer_shape(
@@ -45,72 +44,51 @@ impl BlockDef for MapBlockDef {
     fn show_depth(&self) -> bool {
         false
     }
-}
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
-
-pub fn register() {
-    register_block(Box::new(MapBlockDef));
-
-    register_block_codegen("Map", "pytorch", pytorch_codegen);
-    register_block_codegen("Map", "keras", keras_codegen);
-    register_block_codegen("Map", "candle", candle_codegen);
-}
-
-// ---------------------------------------------------------------------------
-// Codegen functions
-// ---------------------------------------------------------------------------
-
-fn pytorch_codegen(
-    _block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = {}  # Map (identity; apply custom fn manually)",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
+    fn codegen(
+        &self,
+        target: &str,
+        _block: &Block,
+        input_vars: &[String],
+        output_vars: &[String],
+    ) -> Option<BlockCodegenResult> {
+        match target {
+            "pytorch" => Some({
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = {}  # Map (identity; apply custom fn manually)",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "keras" => Some({
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = keras.layers.Lambda(lambda t: t)({})  # Map",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "candle" => Some({
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = {}.clone();  // Map (identity; apply custom fn manually)",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            _ => None,
+        }
     }
 }
 
-fn keras_codegen(
-    _block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = keras.layers.Lambda(lambda t: t)({})  # Map",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-fn candle_codegen(
-    _block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = {}.clone();  // Map (identity; apply custom fn manually)",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+register_plugin!(Map);
 
 #[cfg(test)]
 mod tests {
@@ -118,7 +96,7 @@ mod tests {
 
     #[test]
     fn test_map_block_def() {
-        let def = MapBlockDef;
+        let def = Map;
         assert_eq!(def.name(), "Map");
         assert!(!def.show_depth());
 

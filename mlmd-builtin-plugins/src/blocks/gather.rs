@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use mlmd_core::types::*;
+use mlmd_plugin_api::*;
 
 use crate::helpers::get_num;
 
@@ -14,23 +14,14 @@ use crate::helpers::get_num;
 // BlockDef for shape inference
 // ---------------------------------------------------------------------------
 
-struct GatherBlockDef;
+struct Gather;
 
-impl BlockDef for GatherBlockDef {
-    fn name(&self) -> &str {
-        "Gather"
+impl Plugin for Gather {
+    fn params(&self) -> Vec<ParamSpec> {
+        vec![ParamSpec::number("axis").optional()]
     }
-
-    fn params(&self) -> &[ParamSpec] {
-        static PARAMS: std::sync::LazyLock<Vec<ParamSpec>> = std::sync::LazyLock::new(|| {
-            vec![ParamSpec {
-                name: "axis".into(),
-                param_type: ParamType::Number,
-                required: false,
-                default: None,
-            }]
-        });
-        &PARAMS
+    fn name(&self) -> &'static str {
+        "Gather"
     }
 
     fn infer_shape(
@@ -55,93 +46,72 @@ impl BlockDef for GatherBlockDef {
     fn show_depth(&self) -> bool {
         false
     }
-}
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
-
-pub fn register() {
-    register_block(Box::new(GatherBlockDef));
-
-    register_block_codegen("Gather", "pytorch", pytorch_codegen);
-    register_block_codegen("Gather", "keras", keras_codegen);
-    register_block_codegen("Gather", "candle", candle_codegen);
-}
-
-// ---------------------------------------------------------------------------
-// Codegen functions
-// ---------------------------------------------------------------------------
-
-fn pytorch_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let axis = get_num(&block.params, "axis").unwrap_or(0.0) as isize;
-    let idx = input_vars
-        .get(1)
-        .cloned()
-        .unwrap_or_else(|| "index".to_string());
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = torch.gather({}, {}, {})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            axis,
-            idx,
-        ),
+    fn codegen(
+        &self,
+        target: &str,
+        block: &Block,
+        input_vars: &[String],
+        output_vars: &[String],
+    ) -> Option<BlockCodegenResult> {
+        match target {
+            "pytorch" => Some({
+                let axis = get_num(&block.params, "axis").unwrap_or(0.0) as isize;
+                let idx = input_vars
+                    .get(1)
+                    .cloned()
+                    .unwrap_or_else(|| "index".to_string());
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = torch.gather({}, {}, {})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        axis,
+                        idx,
+                    ),
+                }
+            }),
+            "keras" => Some({
+                let axis = get_num(&block.params, "axis").unwrap_or(0.0) as isize;
+                let idx = input_vars
+                    .get(1)
+                    .cloned()
+                    .unwrap_or_else(|| "indices".to_string());
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = tf.gather({}, {}, axis={})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        idx,
+                        axis,
+                    ),
+                }
+            }),
+            "candle" => Some({
+                let axis = get_num(&block.params, "axis").unwrap_or(0.0) as isize;
+                let idx = input_vars
+                    .get(1)
+                    .cloned()
+                    .unwrap_or_else(|| "index".to_string());
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = {}.gather(&{}, {})?;",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        idx,
+                        axis,
+                    ),
+                }
+            }),
+            _ => None,
+        }
     }
 }
 
-fn keras_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let axis = get_num(&block.params, "axis").unwrap_or(0.0) as isize;
-    let idx = input_vars
-        .get(1)
-        .cloned()
-        .unwrap_or_else(|| "indices".to_string());
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = tf.gather({}, {}, axis={})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            idx,
-            axis,
-        ),
-    }
-}
-
-fn candle_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let axis = get_num(&block.params, "axis").unwrap_or(0.0) as isize;
-    let idx = input_vars
-        .get(1)
-        .cloned()
-        .unwrap_or_else(|| "index".to_string());
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = {}.gather(&{}, {})?;",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            idx,
-            axis,
-        ),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+register_plugin!(Gather);
 
 #[cfg(test)]
 mod tests {
@@ -149,7 +119,7 @@ mod tests {
 
     #[test]
     fn test_gather_block_def() {
-        let def = GatherBlockDef;
+        let def = Gather;
         assert_eq!(def.name(), "Gather");
         assert!(!def.show_depth());
 

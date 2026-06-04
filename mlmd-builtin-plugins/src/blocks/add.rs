@@ -6,21 +6,20 @@
 
 use std::collections::HashMap;
 
-use mlmd_core::types::*;
+use mlmd_plugin_api::*;
 
 // ---------------------------------------------------------------------------
 // BlockDef for shape inference
 // ---------------------------------------------------------------------------
 
-struct AddBlockDef;
+struct Add;
 
-impl BlockDef for AddBlockDef {
-    fn name(&self) -> &str {
-        "Add"
+impl Plugin for Add {
+    fn params(&self) -> Vec<ParamSpec> {
+        vec![]
     }
-
-    fn params(&self) -> &[ParamSpec] {
-        &[]
+    fn name(&self) -> &'static str {
+        "Add"
     }
 
     fn infer_shape(
@@ -45,73 +44,52 @@ impl BlockDef for AddBlockDef {
     fn show_depth(&self) -> bool {
         false
     }
-}
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
-
-pub fn register() {
-    register_block(Box::new(AddBlockDef));
-
-    register_block_codegen("Add", "pytorch", pytorch_codegen);
-    register_block_codegen("Add", "keras", keras_codegen);
-    register_block_codegen("Add", "candle", candle_codegen);
-}
-
-// ---------------------------------------------------------------------------
-// Codegen functions
-// ---------------------------------------------------------------------------
-
-fn pytorch_codegen(
-    _block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = {}",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.join(" + "),
-        ),
+    fn codegen(
+        &self,
+        target: &str,
+        _block: &Block,
+        input_vars: &[String],
+        output_vars: &[String],
+    ) -> Option<BlockCodegenResult> {
+        match target {
+            "pytorch" => Some({
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = {}",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.join(" + "),
+                    ),
+                }
+            }),
+            "keras" => Some({
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = keras.layers.Add()([{}])",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.join(", "),
+                    ),
+                }
+            }),
+            "candle" => Some({
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = (&{} + &{})?;",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.get(1).map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            _ => None,
+        }
     }
 }
 
-fn keras_codegen(
-    _block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = keras.layers.Add()([{}])",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.join(", "),
-        ),
-    }
-}
-
-fn candle_codegen(
-    _block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = (&{} + &{})?;",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.get(1).map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+register_plugin!(Add);
 
 #[cfg(test)]
 mod tests {
@@ -119,7 +97,7 @@ mod tests {
 
     #[test]
     fn test_add_block_def() {
-        let def = AddBlockDef;
+        let def = Add;
         assert_eq!(def.name(), "Add");
         assert!(!def.show_depth());
 

@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use mlmd_core::types::*;
+use mlmd_plugin_api::*;
 
 use crate::helpers::get_num;
 
@@ -14,23 +14,14 @@ use crate::helpers::get_num;
 // BlockDef for shape inference
 // ---------------------------------------------------------------------------
 
-struct ConcatBlockDef;
+struct Concat;
 
-impl BlockDef for ConcatBlockDef {
-    fn name(&self) -> &str {
-        "Concat"
+impl Plugin for Concat {
+    fn params(&self) -> Vec<ParamSpec> {
+        vec![ParamSpec::number("axis").optional()]
     }
-
-    fn params(&self) -> &[ParamSpec] {
-        static PARAMS: std::sync::LazyLock<Vec<ParamSpec>> = std::sync::LazyLock::new(|| {
-            vec![ParamSpec {
-                name: "axis".into(),
-                param_type: ParamType::Number,
-                required: false,
-                default: None,
-            }]
-        });
-        &PARAMS
+    fn name(&self) -> &'static str {
+        "Concat"
     }
 
     fn infer_shape(
@@ -62,77 +53,60 @@ impl BlockDef for ConcatBlockDef {
     fn show_depth(&self) -> bool {
         false
     }
-}
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
+    fn num_inputs(&self) -> Option<usize> {
+        None
+    }
 
-pub fn register() {
-    register_block(Box::new(ConcatBlockDef));
-
-    register_block_codegen("Concat", "pytorch", pytorch_codegen);
-    register_block_codegen("Concat", "keras", keras_codegen);
-    register_block_codegen("Concat", "candle", candle_codegen);
-}
-
-// ---------------------------------------------------------------------------
-// Codegen functions
-// ---------------------------------------------------------------------------
-
-fn pytorch_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let dim = get_num(&block.params, "axis").unwrap_or(1.0) as isize;
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = torch.cat([{}], dim={})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.join(", "),
-            dim,
-        ),
+    fn codegen(
+        &self,
+        target: &str,
+        block: &Block,
+        input_vars: &[String],
+        output_vars: &[String],
+    ) -> Option<BlockCodegenResult> {
+        match target {
+            "pytorch" => Some({
+                let dim = get_num(&block.params, "axis").unwrap_or(1.0) as isize;
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = torch.cat([{}], dim={})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.join(", "),
+                        dim,
+                    ),
+                }
+            }),
+            "keras" => Some({
+                let axis = get_num(&block.params, "axis").unwrap_or(-1.0) as isize;
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = keras.layers.Concatenate(axis={})([{}])",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        axis,
+                        input_vars.join(", "),
+                    ),
+                }
+            }),
+            "candle" => Some({
+                let tensors: Vec<String> = input_vars.iter().map(|v| format!("&{}", v)).collect();
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = Tensor::cat(&[{}], 1)?;",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        tensors.join(", "),
+                    ),
+                }
+            }),
+            _ => None,
+        }
     }
 }
 
-fn keras_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let axis = get_num(&block.params, "axis").unwrap_or(-1.0) as isize;
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = keras.layers.Concatenate(axis={})([{}])",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            axis,
-            input_vars.join(", "),
-        ),
-    }
-}
-
-fn candle_codegen(
-    _block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let tensors: Vec<String> = input_vars.iter().map(|v| format!("&{}", v)).collect();
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = Tensor::cat(&[{}], 1)?;",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            tensors.join(", "),
-        ),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+register_plugin!(Concat);
 
 #[cfg(test)]
 mod tests {
@@ -140,7 +114,7 @@ mod tests {
 
     #[test]
     fn test_concat_block_def() {
-        let def = ConcatBlockDef;
+        let def = Concat;
         assert_eq!(def.name(), "Concat");
         assert!(!def.show_depth());
 

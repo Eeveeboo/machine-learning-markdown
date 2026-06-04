@@ -5,7 +5,7 @@
 pub use crate::ast::graph::{Block, Edge, Graph, Group, Shape};
 pub use crate::ast::nodes::*;
 pub use crate::block::registry::{lookup_block, register_block};
-pub use crate::block::types::{BlockDef, ParamSpec, ParamType};
+pub use crate::block::types::{BlockDef, ParamSpec, ParamSpecBuilder, ParamType};
 pub use crate::codegen::result::GeneratedFile;
 pub use crate::codegen::target::{register_target, CodegenTarget};
 pub use crate::config::loader::MlmdConfig;

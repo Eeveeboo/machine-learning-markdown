@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use mlmd_core::types::*;
+use mlmd_plugin_api::*;
 
 use crate::helpers::get_num;
 
@@ -14,23 +14,14 @@ use crate::helpers::get_num;
 // BlockDef for shape inference
 // ---------------------------------------------------------------------------
 
-struct GroupNormBlockDef;
+struct GroupNorm;
 
-impl BlockDef for GroupNormBlockDef {
-    fn name(&self) -> &str {
-        "GroupNorm"
+impl Plugin for GroupNorm {
+    fn params(&self) -> Vec<ParamSpec> {
+        vec![ParamSpec::number("num_groups").optional()]
     }
-
-    fn params(&self) -> &[ParamSpec] {
-        static PARAMS: std::sync::LazyLock<Vec<ParamSpec>> = std::sync::LazyLock::new(|| {
-            vec![ParamSpec {
-                name: "num_groups".into(),
-                param_type: ParamType::Number,
-                required: false,
-                default: None,
-            }]
-        });
-        &PARAMS
+    fn name(&self) -> &'static str {
+        "GroupNorm"
     }
 
     fn infer_shape(
@@ -58,103 +49,82 @@ impl BlockDef for GroupNormBlockDef {
     fn show_depth(&self) -> bool {
         false
     }
-}
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
-
-pub fn register() {
-    register_block(Box::new(GroupNormBlockDef));
-
-    register_block_codegen("GroupNorm", "pytorch", pytorch_codegen);
-    register_block_codegen("GroupNorm", "keras", keras_codegen);
-    register_block_codegen("GroupNorm", "candle", candle_codegen);
-}
-
-// ---------------------------------------------------------------------------
-// Codegen functions
-// ---------------------------------------------------------------------------
-
-fn pytorch_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let input_shape = block.input_shapes.first().cloned().unwrap_or_default();
-    let groups = get_num(&block.params, "num_groups").unwrap_or(32.0) as usize;
-    let num = if input_shape.len() >= 3 {
-        input_shape[input_shape.len() - 3]
-    } else if input_shape.len() >= 2 {
-        input_shape[1]
-    } else {
-        0
-    };
-    BlockCodegenResult {
-        init: Some(CandleInitOrString::Plain(format!(
-            "self.{} = nn.GroupNorm({}, {})",
-            block.id, groups, num
-        ))),
-        forward: format!(
-            "{} = self.{}({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            block.id,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
+    fn codegen(
+        &self,
+        target: &str,
+        block: &Block,
+        input_vars: &[String],
+        output_vars: &[String],
+    ) -> Option<BlockCodegenResult> {
+        match target {
+            "pytorch" => Some({
+                let input_shape = block.input_shapes.first().cloned().unwrap_or_default();
+                let groups = get_num(&block.params, "num_groups").unwrap_or(32.0) as usize;
+                let num = if input_shape.len() >= 3 {
+                    input_shape[input_shape.len() - 3]
+                } else if input_shape.len() >= 2 {
+                    input_shape[1]
+                } else {
+                    0
+                };
+                BlockCodegenResult {
+                    init: Some(CandleInitOrString::Plain(format!(
+                        "self.{} = nn.GroupNorm({}, {})",
+                        block.id, groups, num
+                    ))),
+                    forward: format!(
+                        "{} = self.{}({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        block.id,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "keras" => Some({
+                let groups = get_num(&block.params, "num_groups").unwrap_or(32.0) as usize;
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = keras.layers.GroupNormalization(groups={})({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        groups,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "candle" => Some({
+                let input_shape = block.input_shapes.first().cloned().unwrap_or_default();
+                let groups = get_num(&block.params, "num_groups").unwrap_or(32.0) as usize;
+                let channels = if input_shape.len() >= 3 {
+                    input_shape[input_shape.len() - 3]
+                } else if input_shape.len() >= 2 {
+                    input_shape[1]
+                } else {
+                    0
+                };
+                BlockCodegenResult {
+                    init: Some(CandleInitOrString::Candle(CandleInit {
+                        field: format!("{}: candle_nn::GroupNorm", block.id),
+                        body: format!(
+                            "let {} = candle_nn::group_norm({}, {}, 1e-5, vb.pp(\"{}\"))?;",
+                            block.id, groups, channels, block.id
+                        ),
+                    })),
+                    forward: format!(
+                        "{} = self.{}.forward(&{})?;",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        block.id,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            _ => None,
+        }
     }
 }
 
-fn keras_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let groups = get_num(&block.params, "num_groups").unwrap_or(32.0) as usize;
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = keras.layers.GroupNormalization(groups={})({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            groups,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-fn candle_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let input_shape = block.input_shapes.first().cloned().unwrap_or_default();
-    let groups = get_num(&block.params, "num_groups").unwrap_or(32.0) as usize;
-    let channels = if input_shape.len() >= 3 {
-        input_shape[input_shape.len() - 3]
-    } else if input_shape.len() >= 2 {
-        input_shape[1]
-    } else {
-        0
-    };
-    BlockCodegenResult {
-        init: Some(CandleInitOrString::Candle(CandleInit {
-            field: format!("{}: candle_nn::GroupNorm", block.id),
-            body: format!(
-                "let {} = candle_nn::group_norm({}, {}, 1e-5, vb.pp(\"{}\"))?;",
-                block.id, groups, channels, block.id
-            ),
-        })),
-        forward: format!(
-            "{} = self.{}.forward(&{})?;",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            block.id,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+register_plugin!(GroupNorm);
 
 #[cfg(test)]
 mod tests {
@@ -162,7 +132,7 @@ mod tests {
 
     #[test]
     fn test_group_norm_block_def() {
-        let def = GroupNormBlockDef;
+        let def = GroupNorm;
         assert_eq!(def.name(), "GroupNorm");
 
         let shapes = def

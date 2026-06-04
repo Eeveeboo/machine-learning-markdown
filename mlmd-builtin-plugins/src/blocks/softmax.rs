@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use mlmd_core::types::*;
+use mlmd_plugin_api::*;
 
 use crate::helpers::get_num;
 
@@ -14,23 +14,14 @@ use crate::helpers::get_num;
 // BlockDef for shape inference
 // ---------------------------------------------------------------------------
 
-struct SoftmaxBlockDef;
+struct Softmax;
 
-impl BlockDef for SoftmaxBlockDef {
-    fn name(&self) -> &str {
-        "Softmax"
+impl Plugin for Softmax {
+    fn params(&self) -> Vec<ParamSpec> {
+        vec![ParamSpec::number("dim").optional()]
     }
-
-    fn params(&self) -> &[ParamSpec] {
-        static PARAMS: std::sync::LazyLock<Vec<ParamSpec>> = std::sync::LazyLock::new(|| {
-            vec![ParamSpec {
-                name: "dim".into(),
-                param_type: ParamType::Number,
-                required: false,
-                default: None,
-            }]
-        });
-        &PARAMS
+    fn name(&self) -> &'static str {
+        "Softmax"
     }
 
     fn infer_shape(
@@ -55,86 +46,65 @@ impl BlockDef for SoftmaxBlockDef {
     fn show_depth(&self) -> bool {
         false
     }
-}
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
-
-pub fn register() {
-    register_block(Box::new(SoftmaxBlockDef));
-
-    register_block_codegen("Softmax", "pytorch", pytorch_codegen);
-    register_block_codegen("Softmax", "keras", keras_codegen);
-    register_block_codegen("Softmax", "candle", candle_codegen);
-}
-
-// ---------------------------------------------------------------------------
-// Codegen functions
-// ---------------------------------------------------------------------------
-
-fn pytorch_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let dim = get_num(&block.params, "dim").unwrap_or(-1.0) as isize;
-    BlockCodegenResult {
-        init: Some(CandleInitOrString::Plain(format!(
-            "self.{} = nn.Softmax(dim={})",
-            block.id, dim
-        ))),
-        forward: format!(
-            "{} = self.{}({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            block.id,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
+    fn codegen(
+        &self,
+        target: &str,
+        block: &Block,
+        input_vars: &[String],
+        output_vars: &[String],
+    ) -> Option<BlockCodegenResult> {
+        match target {
+            "pytorch" => Some({
+                let dim = get_num(&block.params, "dim").unwrap_or(-1.0) as isize;
+                BlockCodegenResult {
+                    init: Some(CandleInitOrString::Plain(format!(
+                        "self.{} = nn.Softmax(dim={})",
+                        block.id, dim
+                    ))),
+                    forward: format!(
+                        "{} = self.{}({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        block.id,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "keras" => Some({
+                let axis = get_num(&block.params, "dim").unwrap_or(-1.0) as isize;
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = keras.layers.Softmax(axis={})({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        axis,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "candle" => Some({
+                let dim = get_num(&block.params, "dim").unwrap_or(-1.0) as isize;
+                let dim_expr = if dim == -1 {
+                    "candle_core::D::Minus1".to_string()
+                } else {
+                    format!("{}", dim)
+                };
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = candle_nn::ops::softmax(&{}, {})?;",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        dim_expr,
+                    ),
+                }
+            }),
+            _ => None,
+        }
     }
 }
 
-fn keras_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let axis = get_num(&block.params, "dim").unwrap_or(-1.0) as isize;
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = keras.layers.Softmax(axis={})({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            axis,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-fn candle_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let dim = get_num(&block.params, "dim").unwrap_or(-1.0) as isize;
-    let dim_expr = if dim == -1 {
-        "candle_core::D::Minus1".to_string()
-    } else {
-        format!("{}", dim)
-    };
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = candle_nn::ops::softmax(&{}, {})?;",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            dim_expr,
-        ),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+register_plugin!(Softmax);
 
 #[cfg(test)]
 mod tests {
@@ -142,7 +112,7 @@ mod tests {
 
     #[test]
     fn test_softmax_block_def() {
-        let def = SoftmaxBlockDef;
+        let def = Softmax;
         assert_eq!(def.name(), "Softmax");
         assert!(!def.show_depth());
 

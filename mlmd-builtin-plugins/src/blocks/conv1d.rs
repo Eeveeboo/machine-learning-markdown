@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use mlmd_core::types::*;
+use mlmd_plugin_api::*;
 
 use crate::helpers::{conv_out, get_num};
 
@@ -14,43 +14,19 @@ use crate::helpers::{conv_out, get_num};
 // BlockDef for shape inference
 // ---------------------------------------------------------------------------
 
-struct Conv1dBlockDef;
+struct Conv1d;
 
-impl BlockDef for Conv1dBlockDef {
-    fn name(&self) -> &str {
-        "Conv1d"
+impl Plugin for Conv1d {
+    fn params(&self) -> Vec<ParamSpec> {
+        vec![
+            ParamSpec::number("filters").required(),
+            ParamSpec::number("kernel").required(),
+            ParamSpec::number("stride").optional(),
+            ParamSpec::number("padding").optional(),
+        ]
     }
-
-    fn params(&self) -> &[ParamSpec] {
-        static PARAMS: std::sync::LazyLock<Vec<ParamSpec>> = std::sync::LazyLock::new(|| {
-            vec![
-                ParamSpec {
-                    name: "filters".into(),
-                    param_type: ParamType::Number,
-                    required: true,
-                    default: None,
-                },
-                ParamSpec {
-                    name: "kernel".into(),
-                    param_type: ParamType::Number,
-                    required: true,
-                    default: None,
-                },
-                ParamSpec {
-                    name: "stride".into(),
-                    param_type: ParamType::Number,
-                    required: false,
-                    default: None,
-                },
-                ParamSpec {
-                    name: "padding".into(),
-                    param_type: ParamType::Number,
-                    required: false,
-                    default: None,
-                },
-            ]
-        });
-        &PARAMS
+    fn name(&self) -> &'static str {
+        "Conv1d"
     }
 
     fn infer_shape(
@@ -87,23 +63,81 @@ impl BlockDef for Conv1dBlockDef {
     fn show_depth(&self) -> bool {
         true
     }
+
+    fn codegen(
+        &self,
+        target: &str,
+        block: &Block,
+        input_vars: &[String],
+        output_vars: &[String],
+    ) -> Option<BlockCodegenResult> {
+        match target {
+            "pytorch" => Some({
+                let in_ch = get_in_ch(block);
+                let filters = get_filters(block);
+                let kernel = get_kernel(block);
+                let stride = get_stride(block);
+                let padding = get_padding(block);
+                BlockCodegenResult {
+                    init: Some(CandleInitOrString::Plain(format!(
+                        "self.{} = nn.Conv1d({}, {}, {}, stride={}, padding={})",
+                        block.id, in_ch, filters, kernel, stride, padding
+                    ))),
+                    forward: format!(
+                        "{} = self.{}({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        block.id,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "keras" => Some({
+                let filters = get_filters(block);
+                let kernel = get_kernel(block);
+                let stride = get_stride(block);
+                let padding_num = get_padding(block);
+                let padding_str = if padding_num == 0 { "valid" } else { "same" };
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = keras.layers.Conv1D({}, {}, strides={}, padding='{}')({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        filters,
+                        kernel,
+                        stride,
+                        padding_str,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "candle" => Some({
+                let in_ch = get_in_ch(block);
+                let filters = get_filters(block);
+                let kernel = get_kernel(block);
+                let stride = get_stride(block);
+                let padding = get_padding(block);
+                BlockCodegenResult {
+                    init: Some(CandleInitOrString::Candle(CandleInit {
+                        field: format!("{}: candle_nn::Conv1d", block.id),
+                        body: format!(
+                            "let {} = candle_nn::conv1d({}, {}, {}, candle_nn::Conv1dConfig {{ stride: {}, padding: {}, ..Default::default() }}, vb.pp(\"{}\"))?;",
+                            block.id, in_ch, filters, kernel, stride, padding, block.id
+                        ),
+                    })),
+                    forward: format!(
+                        "{} = self.{}.forward(&{})?;",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        block.id,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            _ => None,
+        }
+    }
 }
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
-
-pub fn register() {
-    register_block(Box::new(Conv1dBlockDef));
-
-    register_block_codegen("Conv1d", "pytorch", pytorch_codegen);
-    register_block_codegen("Conv1d", "keras", keras_codegen);
-    register_block_codegen("Conv1d", "candle", candle_codegen);
-}
-
-// ---------------------------------------------------------------------------
-// Codegen helpers
-// ---------------------------------------------------------------------------
+register_plugin!(Conv1d);
 
 fn get_in_ch(block: &Block) -> usize {
     if let Some(shape) = block.input_shapes.first() {
@@ -153,89 +187,6 @@ fn get_padding(block: &Block) -> usize {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Codegen functions
-// ---------------------------------------------------------------------------
-
-fn pytorch_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let in_ch = get_in_ch(block);
-    let filters = get_filters(block);
-    let kernel = get_kernel(block);
-    let stride = get_stride(block);
-    let padding = get_padding(block);
-    BlockCodegenResult {
-        init: Some(CandleInitOrString::Plain(format!(
-            "self.{} = nn.Conv1d({}, {}, {}, stride={}, padding={})",
-            block.id, in_ch, filters, kernel, stride, padding
-        ))),
-        forward: format!(
-            "{} = self.{}({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            block.id,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-fn keras_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let filters = get_filters(block);
-    let kernel = get_kernel(block);
-    let stride = get_stride(block);
-    let padding_num = get_padding(block);
-    let padding_str = if padding_num == 0 { "valid" } else { "same" };
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = keras.layers.Conv1D({}, {}, strides={}, padding='{}')({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            filters,
-            kernel,
-            stride,
-            padding_str,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-fn candle_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let in_ch = get_in_ch(block);
-    let filters = get_filters(block);
-    let kernel = get_kernel(block);
-    let stride = get_stride(block);
-    let padding = get_padding(block);
-    BlockCodegenResult {
-        init: Some(CandleInitOrString::Candle(CandleInit {
-            field: format!("{}: candle_nn::Conv1d", block.id),
-            body: format!(
-                "let {} = candle_nn::conv1d({}, {}, {}, candle_nn::Conv1dConfig {{ stride: {}, padding: {}, ..Default::default() }}, vb.pp(\"{}\"))?;",
-                block.id, in_ch, filters, kernel, stride, padding, block.id
-            ),
-        })),
-        forward: format!(
-            "{} = self.{}.forward(&{})?;",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            block.id,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -243,7 +194,7 @@ mod tests {
 
     #[test]
     fn test_conv1d_block_def() {
-        let def = Conv1dBlockDef;
+        let def = Conv1d;
         assert_eq!(def.name(), "Conv1d");
 
         let mut p = HashMap::new();

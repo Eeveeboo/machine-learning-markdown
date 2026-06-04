@@ -43,6 +43,40 @@ pub struct BlockCodegenResult {
     pub forward: String,
 }
 
+impl BlockCodegenResult {
+    /// Create a result for a **stateless** block (e.g. activations, merges).
+    ///
+    /// No init-time declaration is generated.
+    pub fn stateless(forward: String) -> Self {
+        BlockCodegenResult {
+            init: None,
+            forward,
+        }
+    }
+
+    /// Create a result for a **stateful** block with a plain init string.
+    ///
+    /// Used for pytorch and keras targets.
+    pub fn stateful(init: String, forward: String) -> Self {
+        BlockCodegenResult {
+            init: Some(CandleInitOrString::Plain(init)),
+            forward,
+        }
+    }
+
+    /// Create a result for a **Candle (Rust) target** block.
+    ///
+    /// * `field` — struct field declaration (e.g. `"linear: candle_nn::Linear"`)
+    /// * `body` — init body statement (e.g. `"let linear = candle_nn::linear(...)?;"`)
+    /// * `forward` — forward-pass code
+    pub fn candle(field: String, body: String, forward: String) -> Self {
+        BlockCodegenResult {
+            init: Some(CandleInitOrString::Candle(CandleInit { field, body })),
+            forward,
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // BlockCodegenFn — function pointer type for per-block codegen
 // ---------------------------------------------------------------------------

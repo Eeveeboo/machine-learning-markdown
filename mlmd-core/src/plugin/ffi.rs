@@ -2,8 +2,10 @@ use std::collections::HashMap;
 use std::ffi::CString;
 use std::os::raw::c_char;
 
-use crate::ast::graph::Shape;
+use crate::ast::graph::{Block, Shape};
 use crate::ast::nodes::ParamValue;
+use crate::block::types::ParamSpec;
+use crate::plugin::traits::BlockCodegenResult;
 
 // ---------------------------------------------------------------------------
 // PluginFFI — C-ABI compatible function table for dynamic plugin loading
@@ -82,4 +84,24 @@ pub fn parse_params_json(json: &str) -> Result<HashMap<String, ParamValue>, Stri
 /// Serialize a `HashMap<String, ParamValue>` to a JSON string.
 pub fn params_to_json(params: &HashMap<String, ParamValue>) -> String {
     serde_json::to_string(params).unwrap_or_default()
+}
+
+/// Serialize a slice of `ParamSpec` to a JSON string.
+pub fn specs_to_json(specs: &[ParamSpec]) -> String {
+    serde_json::to_string(specs).unwrap_or_default()
+}
+
+/// Serialize a `BlockCodegenResult` to a JSON string.
+pub fn codegen_result_to_json(result: &BlockCodegenResult) -> String {
+    serde_json::to_string(result).unwrap_or_default()
+}
+
+/// Deserialize a `Block` from a JSON string.
+pub fn parse_block_json(json: &str) -> Result<Block, String> {
+    serde_json::from_str(json).map_err(|e| e.to_string())
+}
+
+/// Deserialize a `Vec<String>` from a JSON string.
+pub fn parse_string_list_json(json: &str) -> Result<Vec<String>, String> {
+    serde_json::from_str(json).map_err(|e| e.to_string())
 }

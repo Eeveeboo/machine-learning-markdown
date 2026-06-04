@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use mlmd_core::types::*;
+use mlmd_plugin_api::*;
 
 use crate::helpers::get_num_list;
 
@@ -14,23 +14,14 @@ use crate::helpers::get_num_list;
 // BlockDef for shape inference
 // ---------------------------------------------------------------------------
 
-struct PadBlockDef;
+struct Pad;
 
-impl BlockDef for PadBlockDef {
-    fn name(&self) -> &str {
-        "Pad"
+impl Plugin for Pad {
+    fn params(&self) -> Vec<ParamSpec> {
+        vec![ParamSpec::shape("padding").required()]
     }
-
-    fn params(&self) -> &[ParamSpec] {
-        static PARAMS: std::sync::LazyLock<Vec<ParamSpec>> = std::sync::LazyLock::new(|| {
-            vec![ParamSpec {
-                name: "padding".into(),
-                param_type: ParamType::Shape,
-                required: true,
-                default: None,
-            }]
-        });
-        &PARAMS
+    fn name(&self) -> &'static str {
+        "Pad"
     }
 
     fn infer_shape(
@@ -69,111 +60,93 @@ impl BlockDef for PadBlockDef {
     fn show_depth(&self) -> bool {
         false
     }
-}
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
-
-pub fn register() {
-    register_block(Box::new(PadBlockDef));
-
-    register_block_codegen("Pad", "pytorch", pytorch_codegen);
-    register_block_codegen("Pad", "keras", keras_codegen);
-    register_block_codegen("Pad", "candle", candle_codegen);
-}
-
-// ---------------------------------------------------------------------------
-// Codegen functions
-// ---------------------------------------------------------------------------
-
-fn pytorch_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let input0 = input_vars.first().map(|s| s.as_str()).unwrap_or("?");
-    let output0 = output_vars.first().map(|s| s.as_str()).unwrap_or("?");
-    if let Some(ParamValue::List(l)) = block.params.get("padding") {
-        let vals: Vec<String> = l
-            .items
-            .iter()
-            .filter_map(|i| {
-                if let ParamValue::Number(n) = i {
-                    Some(n.value.to_string())
+    fn codegen(
+        &self,
+        target: &str,
+        block: &Block,
+        input_vars: &[String],
+        output_vars: &[String],
+    ) -> Option<BlockCodegenResult> {
+        match target {
+            "pytorch" => Some({
+                let input0 = input_vars.first().map(|s| s.as_str()).unwrap_or("?");
+                let output0 = output_vars.first().map(|s| s.as_str()).unwrap_or("?");
+                if let Some(ParamValue::List(l)) = block.params.get("padding") {
+                    let vals: Vec<String> = l
+                        .items
+                        .iter()
+                        .filter_map(|i| {
+                            if let ParamValue::Number(n) = i {
+                                Some(n.value.to_string())
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+                    BlockCodegenResult {
+                        init: None,
+                        forward: format!(
+                            "{} = torch.nn.functional.pad({}, ({}))",
+                            output0,
+                            input0,
+                            vals.join(", ")
+                        ),
+                    }
                 } else {
-                    None
+                    BlockCodegenResult {
+                        init: None,
+                        forward: format!(
+                            "{} = torch.nn.functional.pad({}, (0, 0))",
+                            output0, input0
+                        ),
+                    }
                 }
-            })
-            .collect();
-        BlockCodegenResult {
-            init: None,
-            forward: format!(
-                "{} = torch.nn.functional.pad({}, ({}))",
-                output0,
-                input0,
-                vals.join(", ")
-            ),
-        }
-    } else {
-        BlockCodegenResult {
-            init: None,
-            forward: format!("{} = torch.nn.functional.pad({}, (0, 0))", output0, input0),
-        }
-    }
-}
-
-fn keras_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let input0 = input_vars.first().map(|s| s.as_str()).unwrap_or("?");
-    let output0 = output_vars.first().map(|s| s.as_str()).unwrap_or("?");
-    let p = get_num_list(&block.params, "padding");
-    if p.len() >= 4 {
-        BlockCodegenResult {
-            init: None,
-            forward: format!(
-                "{} = keras.layers.ZeroPadding2D(padding=(({}, {}), ({}, {})))({})",
-                output0, p[0], p[1], p[2], p[3], input0
-            ),
-        }
-    } else {
-        BlockCodegenResult {
-            init: None,
-            forward: format!("{} = keras.layers.ZeroPadding2D()({})", output0, input0),
-        }
-    }
-}
-
-fn candle_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let input0 = input_vars.first().map(|s| s.as_str()).unwrap_or("?");
-    let output0 = output_vars.first().map(|s| s.as_str()).unwrap_or("?");
-    let p = get_num_list(&block.params, "padding");
-    if p.len() >= 4 {
-        BlockCodegenResult {
-            init: None,
-            forward: format!(
-                "{} = {}.pad_with_zeros(2, {}, {})?.pad_with_zeros(3, {}, {})?",
-                output0, input0, p[0], p[1], p[2], p[3]
-            ),
-        }
-    } else {
-        BlockCodegenResult {
-            init: None,
-            forward: format!("{} = {}.pad_with_zeros(2, 0, 0)?;", output0, input0),
+            }),
+            "keras" => Some({
+                let input0 = input_vars.first().map(|s| s.as_str()).unwrap_or("?");
+                let output0 = output_vars.first().map(|s| s.as_str()).unwrap_or("?");
+                let p = get_num_list(&block.params, "padding");
+                if p.len() >= 4 {
+                    BlockCodegenResult {
+                        init: None,
+                        forward: format!(
+                            "{} = keras.layers.ZeroPadding2D(padding=(({}, {}), ({}, {})))({})",
+                            output0, p[0], p[1], p[2], p[3], input0
+                        ),
+                    }
+                } else {
+                    BlockCodegenResult {
+                        init: None,
+                        forward: format!("{} = keras.layers.ZeroPadding2D()({})", output0, input0),
+                    }
+                }
+            }),
+            "candle" => Some({
+                let input0 = input_vars.first().map(|s| s.as_str()).unwrap_or("?");
+                let output0 = output_vars.first().map(|s| s.as_str()).unwrap_or("?");
+                let p = get_num_list(&block.params, "padding");
+                if p.len() >= 4 {
+                    BlockCodegenResult {
+                        init: None,
+                        forward: format!(
+                            "{} = {}.pad_with_zeros(2, {}, {})?.pad_with_zeros(3, {}, {})?",
+                            output0, input0, p[0], p[1], p[2], p[3]
+                        ),
+                    }
+                } else {
+                    BlockCodegenResult {
+                        init: None,
+                        forward: format!("{} = {}.pad_with_zeros(2, 0, 0)?;", output0, input0),
+                    }
+                }
+            }),
+            _ => None,
         }
     }
 }
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+register_plugin!(Pad);
 
 #[cfg(test)]
 mod tests {
@@ -182,7 +155,7 @@ mod tests {
 
     #[test]
     fn test_pad_block_def() {
-        let def = PadBlockDef;
+        let def = Pad;
         assert_eq!(def.name(), "Pad");
         assert!(!def.show_depth());
 

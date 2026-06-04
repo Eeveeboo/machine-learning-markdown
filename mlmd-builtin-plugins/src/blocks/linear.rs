@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use mlmd_core::types::*;
+use mlmd_plugin_api::*;
 
 use crate::helpers::get_num;
 
@@ -14,23 +14,14 @@ use crate::helpers::get_num;
 // BlockDef for shape inference
 // ---------------------------------------------------------------------------
 
-struct LinearBlockDef;
+struct Linear;
 
-impl BlockDef for LinearBlockDef {
-    fn name(&self) -> &str {
-        "Linear"
+impl Plugin for Linear {
+    fn params(&self) -> Vec<ParamSpec> {
+        vec![ParamSpec::number("out_features").required()]
     }
-
-    fn params(&self) -> &[ParamSpec] {
-        static PARAMS: std::sync::LazyLock<Vec<ParamSpec>> = std::sync::LazyLock::new(|| {
-            vec![ParamSpec {
-                name: "out_features".into(),
-                param_type: ParamType::Number,
-                required: true,
-                default: None,
-            }]
-        });
-        &PARAMS
+    fn name(&self) -> &'static str {
+        "Linear"
     }
 
     fn infer_shape(
@@ -62,23 +53,68 @@ impl BlockDef for LinearBlockDef {
     fn show_depth(&self) -> bool {
         true
     }
+
+    fn codegen(
+        &self,
+        target: &str,
+        block: &Block,
+        input_vars: &[String],
+        output_vars: &[String],
+    ) -> Option<BlockCodegenResult> {
+        match target {
+            "pytorch" => Some({
+                let in_f = get_in_f(block);
+                let out_f = get_out_f(block);
+                BlockCodegenResult {
+                    init: Some(CandleInitOrString::Plain(format!(
+                        "self.{} = nn.Linear({}, {})",
+                        block.id, in_f, out_f
+                    ))),
+                    forward: format!(
+                        "{} = self.{}({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        block.id,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "keras" => Some({
+                let out_f = get_out_f(block);
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = keras.layers.Dense({})({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        out_f,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "candle" => Some({
+                let in_f = get_in_f(block);
+                let out_f = get_out_f(block);
+                BlockCodegenResult {
+                    init: Some(CandleInitOrString::Candle(CandleInit {
+                        field: format!("{}: candle_nn::Linear", block.id),
+                        body: format!(
+                            "let {} = candle_nn::linear({}, {}, vb.pp(\"{}\"))?;",
+                            block.id, in_f, out_f, block.id
+                        ),
+                    })),
+                    forward: format!(
+                        "{} = self.{}.forward(&{})?;",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        block.id,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            _ => None,
+        }
+    }
 }
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
-
-pub fn register() {
-    register_block(Box::new(LinearBlockDef));
-
-    register_block_codegen("Linear", "pytorch", pytorch_codegen);
-    register_block_codegen("Linear", "keras", keras_codegen);
-    register_block_codegen("Linear", "candle", candle_codegen);
-}
-
-// ---------------------------------------------------------------------------
-// Codegen helpers
-// ---------------------------------------------------------------------------
+register_plugin!(Linear);
 
 fn get_out_f(block: &Block) -> usize {
     if let Some(ParamValue::Number(n)) = block.params.get("out_features") {
@@ -100,83 +136,13 @@ fn get_in_f(block: &Block) -> usize {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Codegen functions
-// ---------------------------------------------------------------------------
-
-fn pytorch_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let in_f = get_in_f(block);
-    let out_f = get_out_f(block);
-    BlockCodegenResult {
-        init: Some(CandleInitOrString::Plain(format!(
-            "self.{} = nn.Linear({}, {})",
-            block.id, in_f, out_f
-        ))),
-        forward: format!(
-            "{} = self.{}({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            block.id,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-fn keras_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let out_f = get_out_f(block);
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = keras.layers.Dense({})({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            out_f,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-fn candle_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let in_f = get_in_f(block);
-    let out_f = get_out_f(block);
-    BlockCodegenResult {
-        init: Some(CandleInitOrString::Candle(CandleInit {
-            field: format!("{}: candle_nn::Linear", block.id),
-            body: format!(
-                "let {} = candle_nn::linear({}, {}, vb.pp(\"{}\"))?;",
-                block.id, in_f, out_f, block.id
-            ),
-        })),
-        forward: format!(
-            "{} = self.{}.forward(&{})?;",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            block.id,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_linear_block_def() {
-        let def = LinearBlockDef;
+        let def = Linear;
         assert_eq!(def.name(), "Linear");
 
         let mut p = HashMap::new();

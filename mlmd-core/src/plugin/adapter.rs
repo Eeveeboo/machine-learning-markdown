@@ -36,6 +36,11 @@ use crate::plugin::registry::register_block_codegen;
 static DYNAMIC_PLUGINS: LazyLock<Mutex<HashMap<String, Arc<DynamicPlugin>>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
+/// Parallel store mapping block_name → plugin library path.
+/// Used by `mlmd plugin list` to display provenance.
+static DYNAMIC_PLUGIN_SOURCES: LazyLock<Mutex<Vec<(String, String)>>> =
+    LazyLock::new(|| Mutex::new(Vec::new()));
+
 // ---------------------------------------------------------------------------
 // DynamicPluginBlockDef — wraps a DynamicPlugin as a BlockDef
 // ---------------------------------------------------------------------------
@@ -63,11 +68,7 @@ impl BlockDef for DynamicPluginBlockDef {
         self.plugin.infer_shape(inputs, params)
     }
 
-    fn param_count(
-        &self,
-        inputs: &[Shape],
-        params: &HashMap<String, ParamValue>,
-    ) -> Option<usize> {
+    fn param_count(&self, inputs: &[Shape], params: &HashMap<String, ParamValue>) -> Option<usize> {
         self.plugin.param_count(inputs, params)
     }
 }
@@ -144,10 +145,8 @@ pub fn register_dynamic_plugin(path: &str) -> Result<String, String> {
     let name = plugin.name().to_string();
     let params_json = plugin.params_json();
 
-    let params: Vec<ParamSpec> =
-        serde_json::from_str(&params_json).map_err(|e| {
-            format!("failed to parse plugin params JSON for '{name}': {e}")
-        })?;
+    let params: Vec<ParamSpec> = serde_json::from_str(&params_json)
+        .map_err(|e| format!("failed to parse plugin params JSON for '{name}': {e}"))?;
 
     let plugin = Arc::new(plugin);
 
@@ -156,6 +155,12 @@ pub fn register_dynamic_plugin(path: &str) -> Result<String, String> {
         .lock()
         .expect("dynamic plugins lock poisoned")
         .insert(name.clone(), plugin.clone());
+
+    // Record source path for `mlmd plugin list`
+    DYNAMIC_PLUGIN_SOURCES
+        .lock()
+        .expect("dynamic plugin sources lock poisoned")
+        .push((name.clone(), path.to_string()));
 
     // Register BlockDef (shape inference)
     register_block(Box::new(DynamicPluginBlockDef {
@@ -170,4 +175,12 @@ pub fn register_dynamic_plugin(path: &str) -> Result<String, String> {
     register_block_codegen(&name, "candle", dynamic_candle_codegen);
 
     Ok(name)
+}
+
+/// Return all registered dynamic plugins as `(block_name, library_path)` pairs.
+pub fn all_dynamic_plugins() -> Vec<(String, String)> {
+    DYNAMIC_PLUGIN_SOURCES
+        .lock()
+        .expect("dynamic plugin sources lock poisoned")
+        .clone()
 }

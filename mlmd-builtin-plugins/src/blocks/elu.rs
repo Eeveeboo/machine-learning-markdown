@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use mlmd_core::types::*;
+use mlmd_plugin_api::*;
 
 use crate::helpers::get_num;
 
@@ -14,23 +14,14 @@ use crate::helpers::get_num;
 // BlockDef for shape inference
 // ---------------------------------------------------------------------------
 
-struct ELUBlockDef;
+struct ELU;
 
-impl BlockDef for ELUBlockDef {
-    fn name(&self) -> &str {
-        "ELU"
+impl Plugin for ELU {
+    fn params(&self) -> Vec<ParamSpec> {
+        vec![ParamSpec::number("alpha").optional()]
     }
-
-    fn params(&self) -> &[ParamSpec] {
-        static PARAMS: std::sync::LazyLock<Vec<ParamSpec>> = std::sync::LazyLock::new(|| {
-            vec![ParamSpec {
-                name: "alpha".into(),
-                param_type: ParamType::Number,
-                required: false,
-                default: None,
-            }]
-        });
-        &PARAMS
+    fn name(&self) -> &'static str {
+        "ELU"
     }
 
     fn infer_shape(
@@ -55,81 +46,60 @@ impl BlockDef for ELUBlockDef {
     fn show_depth(&self) -> bool {
         false
     }
-}
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
-
-pub fn register() {
-    register_block(Box::new(ELUBlockDef));
-
-    register_block_codegen("ELU", "pytorch", pytorch_codegen);
-    register_block_codegen("ELU", "keras", keras_codegen);
-    register_block_codegen("ELU", "candle", candle_codegen);
-}
-
-// ---------------------------------------------------------------------------
-// Codegen functions
-// ---------------------------------------------------------------------------
-
-fn pytorch_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let alpha = get_num(&block.params, "alpha").unwrap_or(1.0);
-    BlockCodegenResult {
-        init: Some(CandleInitOrString::Plain(format!(
-            "self.{} = nn.ELU(alpha={})",
-            block.id, alpha
-        ))),
-        forward: format!(
-            "{} = self.{}({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            block.id,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
+    fn codegen(
+        &self,
+        target: &str,
+        block: &Block,
+        input_vars: &[String],
+        output_vars: &[String],
+    ) -> Option<BlockCodegenResult> {
+        match target {
+            "pytorch" => Some({
+                let alpha = get_num(&block.params, "alpha").unwrap_or(1.0);
+                BlockCodegenResult {
+                    init: Some(CandleInitOrString::Plain(format!(
+                        "self.{} = nn.ELU(alpha={})",
+                        block.id, alpha
+                    ))),
+                    forward: format!(
+                        "{} = self.{}({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        block.id,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "keras" => Some({
+                let alpha = get_num(&block.params, "alpha").unwrap_or(1.0);
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = keras.layers.ELU(alpha={})({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        alpha,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "candle" => Some({
+                let alpha = get_num(&block.params, "alpha").unwrap_or(1.0);
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = {}.elu({})?;",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        alpha,
+                    ),
+                }
+            }),
+            _ => None,
+        }
     }
 }
 
-fn keras_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let alpha = get_num(&block.params, "alpha").unwrap_or(1.0);
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = keras.layers.ELU(alpha={})({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            alpha,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-fn candle_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let alpha = get_num(&block.params, "alpha").unwrap_or(1.0);
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = {}.elu({})?;",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            alpha,
-        ),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+register_plugin!(ELU);
 
 #[cfg(test)]
 mod tests {
@@ -137,7 +107,7 @@ mod tests {
 
     #[test]
     fn test_elu_block_def() {
-        let def = ELUBlockDef;
+        let def = ELU;
         assert_eq!(def.name(), "ELU");
         assert!(!def.show_depth());
 

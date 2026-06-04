@@ -63,3 +63,15 @@ fn find_config() -> Result<std::path::PathBuf, String> {
     // Return a path that won't exist — caller handles absense
     Ok(cwd.join(".mlmdrc"))
 }
+
+/// Save a configuration to `.mlmdrc`.
+///
+/// Writes to the nearest existing `.mlmdrc` (walking up the directory tree),
+/// or creates a new one in the current working directory if none exists.
+pub fn save_config(config: &MlmdConfig) -> Result<(), String> {
+    let path = find_config()?;
+    let content = serde_json::to_string_pretty(config)
+        .map_err(|e| format!("failed to serialize config: {e}"))?;
+    fs::write(&path, &content)
+        .map_err(|e| format!("failed to write config to '{}': {e}", path.display()))
+}

@@ -6,29 +6,20 @@
 
 use std::collections::HashMap;
 
-use mlmd_core::types::*;
+use mlmd_plugin_api::*;
 
 // ---------------------------------------------------------------------------
 // BlockDef for shape inference
 // ---------------------------------------------------------------------------
 
-struct DropoutBlockDef;
+struct Dropout;
 
-impl BlockDef for DropoutBlockDef {
-    fn name(&self) -> &str {
-        "Dropout"
+impl Plugin for Dropout {
+    fn params(&self) -> Vec<ParamSpec> {
+        vec![ParamSpec::number("p").optional()]
     }
-
-    fn params(&self) -> &[ParamSpec] {
-        static PARAMS: std::sync::LazyLock<Vec<ParamSpec>> = std::sync::LazyLock::new(|| {
-            vec![ParamSpec {
-                name: "p".into(),
-                param_type: ParamType::Number,
-                required: false,
-                default: None,
-            }]
-        });
-        &PARAMS
+    fn name(&self) -> &'static str {
+        "Dropout"
     }
 
     fn infer_shape(
@@ -53,23 +44,63 @@ impl BlockDef for DropoutBlockDef {
     fn show_depth(&self) -> bool {
         false
     }
+
+    fn codegen(
+        &self,
+        target: &str,
+        block: &Block,
+        input_vars: &[String],
+        output_vars: &[String],
+    ) -> Option<BlockCodegenResult> {
+        match target {
+            "pytorch" => Some({
+                let p = get_p(block);
+                BlockCodegenResult {
+                    init: Some(CandleInitOrString::Plain(format!(
+                        "self.{} = nn.Dropout(p={})",
+                        block.id, p
+                    ))),
+                    forward: format!(
+                        "{} = self.{}({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        block.id,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "keras" => Some({
+                let p = get_p(block);
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = keras.layers.Dropout({})({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        p,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "candle" => Some({
+                let p = get_p(block);
+                BlockCodegenResult {
+                    init: Some(CandleInitOrString::Candle(CandleInit {
+                        field: format!("{}: candle_nn::Dropout", block.id),
+                        body: format!("let {} = candle_nn::Dropout::new({});", block.id, p),
+                    })),
+                    forward: format!(
+                        "{} = self.{}.forward(&{}, true)?;",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        block.id,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            _ => None,
+        }
+    }
 }
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
-
-pub fn register() {
-    register_block(Box::new(DropoutBlockDef));
-
-    register_block_codegen("Dropout", "pytorch", pytorch_codegen);
-    register_block_codegen("Dropout", "keras", keras_codegen);
-    register_block_codegen("Dropout", "candle", candle_codegen);
-}
-
-// ---------------------------------------------------------------------------
-// Codegen helpers
-// ---------------------------------------------------------------------------
+register_plugin!(Dropout);
 
 fn get_p(block: &Block) -> f64 {
     if let Some(ParamValue::Number(n)) = block.params.get("p") {
@@ -81,78 +112,13 @@ fn get_p(block: &Block) -> f64 {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Codegen functions
-// ---------------------------------------------------------------------------
-
-fn pytorch_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let p = get_p(block);
-    BlockCodegenResult {
-        init: Some(CandleInitOrString::Plain(format!(
-            "self.{} = nn.Dropout(p={})",
-            block.id, p
-        ))),
-        forward: format!(
-            "{} = self.{}({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            block.id,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-fn keras_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let p = get_p(block);
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = keras.layers.Dropout({})({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            p,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-fn candle_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let p = get_p(block);
-    BlockCodegenResult {
-        init: Some(CandleInitOrString::Candle(CandleInit {
-            field: format!("{}: candle_nn::Dropout", block.id),
-            body: format!("let {} = candle_nn::Dropout::new({});", block.id, p),
-        })),
-        forward: format!(
-            "{} = self.{}.forward(&{}, true)?;",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            block.id,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_dropout_block_def() {
-        let def = DropoutBlockDef;
+        let def = Dropout;
         assert_eq!(def.name(), "Dropout");
         assert!(!def.show_depth());
 

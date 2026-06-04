@@ -6,21 +6,20 @@
 
 use std::collections::HashMap;
 
-use mlmd_core::types::*;
+use mlmd_plugin_api::*;
 
 // ---------------------------------------------------------------------------
 // BlockDef for shape inference
 // ---------------------------------------------------------------------------
 
-struct MulBlockDef;
+struct Mul;
 
-impl BlockDef for MulBlockDef {
-    fn name(&self) -> &str {
-        "Mul"
+impl Plugin for Mul {
+    fn params(&self) -> Vec<ParamSpec> {
+        vec![]
     }
-
-    fn params(&self) -> &[ParamSpec] {
-        &[]
+    fn name(&self) -> &'static str {
+        "Mul"
     }
 
     fn infer_shape(
@@ -45,73 +44,52 @@ impl BlockDef for MulBlockDef {
     fn show_depth(&self) -> bool {
         false
     }
-}
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
-
-pub fn register() {
-    register_block(Box::new(MulBlockDef));
-
-    register_block_codegen("Mul", "pytorch", pytorch_codegen);
-    register_block_codegen("Mul", "keras", keras_codegen);
-    register_block_codegen("Mul", "candle", candle_codegen);
-}
-
-// ---------------------------------------------------------------------------
-// Codegen functions
-// ---------------------------------------------------------------------------
-
-fn pytorch_codegen(
-    _block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = {}",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.join(" * "),
-        ),
+    fn codegen(
+        &self,
+        target: &str,
+        _block: &Block,
+        input_vars: &[String],
+        output_vars: &[String],
+    ) -> Option<BlockCodegenResult> {
+        match target {
+            "pytorch" => Some({
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = {}",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.join(" * "),
+                    ),
+                }
+            }),
+            "keras" => Some({
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = keras.layers.Multiply()([{}])",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.join(", "),
+                    ),
+                }
+            }),
+            "candle" => Some({
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = (&{} * &{})?;",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.get(1).map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            _ => None,
+        }
     }
 }
 
-fn keras_codegen(
-    _block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = keras.layers.Multiply()([{}])",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.join(", "),
-        ),
-    }
-}
-
-fn candle_codegen(
-    _block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = (&{} * &{})?;",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.get(1).map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+register_plugin!(Mul);
 
 #[cfg(test)]
 mod tests {
@@ -119,7 +97,7 @@ mod tests {
 
     #[test]
     fn test_mul_block_def() {
-        let def = MulBlockDef;
+        let def = Mul;
         assert_eq!(def.name(), "Mul");
         assert!(!def.show_depth());
 

@@ -6,21 +6,20 @@
 
 use std::collections::HashMap;
 
-use mlmd_core::types::*;
+use mlmd_plugin_api::*;
 
 // ---------------------------------------------------------------------------
 // BlockDef for shape inference
 // ---------------------------------------------------------------------------
 
-struct InstanceNormBlockDef;
+struct InstanceNorm;
 
-impl BlockDef for InstanceNormBlockDef {
-    fn name(&self) -> &str {
-        "InstanceNorm"
+impl Plugin for InstanceNorm {
+    fn params(&self) -> Vec<ParamSpec> {
+        vec![]
     }
-
-    fn params(&self) -> &[ParamSpec] {
-        &[]
+    fn name(&self) -> &'static str {
+        "InstanceNorm"
     }
 
     fn infer_shape(
@@ -48,113 +47,92 @@ impl BlockDef for InstanceNormBlockDef {
     fn show_depth(&self) -> bool {
         false
     }
-}
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
-
-pub fn register() {
-    register_block(Box::new(InstanceNormBlockDef));
-
-    register_block_codegen("InstanceNorm", "pytorch", pytorch_codegen);
-    register_block_codegen("InstanceNorm", "keras", keras_codegen);
-    register_block_codegen("InstanceNorm", "candle", candle_codegen);
-}
-
-// ---------------------------------------------------------------------------
-// Codegen functions
-// ---------------------------------------------------------------------------
-
-fn pytorch_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let input_shape = block.input_shapes.first().cloned().unwrap_or_default();
-    let dims = input_shape.len();
-    let init_expr = if dims <= 2 {
-        let num = input_shape.last().copied().unwrap_or(0);
-        format!("self.{} = nn.InstanceNorm1d({})", block.id, num)
-    } else {
-        let num = if dims >= 3 {
-            input_shape[input_shape.len() - 3]
-        } else if dims >= 2 {
-            input_shape[1]
-        } else {
-            0
-        };
-        format!("self.{} = nn.InstanceNorm2d({})", block.id, num)
-    };
-    BlockCodegenResult {
-        init: Some(CandleInitOrString::Plain(init_expr)),
-        forward: format!(
-            "{} = self.{}({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            block.id,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
+    fn codegen(
+        &self,
+        target: &str,
+        block: &Block,
+        input_vars: &[String],
+        output_vars: &[String],
+    ) -> Option<BlockCodegenResult> {
+        match target {
+            "pytorch" => Some({
+                let input_shape = block.input_shapes.first().cloned().unwrap_or_default();
+                let dims = input_shape.len();
+                let init_expr = if dims <= 2 {
+                    let num = input_shape.last().copied().unwrap_or(0);
+                    format!("self.{} = nn.InstanceNorm1d({})", block.id, num)
+                } else {
+                    let num = if dims >= 3 {
+                        input_shape[input_shape.len() - 3]
+                    } else if dims >= 2 {
+                        input_shape[1]
+                    } else {
+                        0
+                    };
+                    format!("self.{} = nn.InstanceNorm2d({})", block.id, num)
+                };
+                BlockCodegenResult {
+                    init: Some(CandleInitOrString::Plain(init_expr)),
+                    forward: format!(
+                        "{} = self.{}({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        block.id,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "keras" => Some({
+                let input_shape = block.input_shapes.first().cloned().unwrap_or_default();
+                let channels = if input_shape.len() >= 3 {
+                    input_shape[input_shape.len() - 3]
+                } else if input_shape.len() >= 2 {
+                    input_shape[1]
+                } else {
+                    input_shape.last().copied().unwrap_or(0)
+                };
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = keras.layers.GroupNormalization(groups={})({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        channels,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "candle" => Some({
+                let input_shape = block.input_shapes.first().cloned().unwrap_or_default();
+                let features = if input_shape.len() >= 4 {
+                    input_shape[input_shape.len() - 3]
+                } else if input_shape.len() >= 3 {
+                    input_shape[input_shape.len() - 1]
+                } else {
+                    input_shape.last().copied().unwrap_or(0)
+                };
+                // Uses BatchNorm as approximation for InstanceNorm in Candle
+                BlockCodegenResult {
+                    init: Some(CandleInitOrString::Candle(CandleInit {
+                        field: format!("{}: candle_nn::BatchNorm", block.id),
+                        body: format!(
+                            "let {} = candle_nn::batch_norm({}, 1e-5, vb.pp(\"{}\"))?;",
+                            block.id, features, block.id
+                        ),
+                    })),
+                    forward: format!(
+                        "{} = self.{}.forward(&{})?;",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        block.id,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            _ => None,
+        }
     }
 }
 
-fn keras_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let input_shape = block.input_shapes.first().cloned().unwrap_or_default();
-    let channels = if input_shape.len() >= 3 {
-        input_shape[input_shape.len() - 3]
-    } else if input_shape.len() >= 2 {
-        input_shape[1]
-    } else {
-        input_shape.last().copied().unwrap_or(0)
-    };
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = keras.layers.GroupNormalization(groups={})({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            channels,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-fn candle_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let input_shape = block.input_shapes.first().cloned().unwrap_or_default();
-    let features = if input_shape.len() >= 4 {
-        input_shape[input_shape.len() - 3]
-    } else if input_shape.len() >= 3 {
-        input_shape[input_shape.len() - 1]
-    } else {
-        input_shape.last().copied().unwrap_or(0)
-    };
-    // Uses BatchNorm as approximation for InstanceNorm in Candle
-    BlockCodegenResult {
-        init: Some(CandleInitOrString::Candle(CandleInit {
-            field: format!("{}: candle_nn::BatchNorm", block.id),
-            body: format!(
-                "let {} = candle_nn::batch_norm({}, 1e-5, vb.pp(\"{}\"))?;",
-                block.id, features, block.id
-            ),
-        })),
-        forward: format!(
-            "{} = self.{}.forward(&{})?;",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            block.id,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+register_plugin!(InstanceNorm);
 
 #[cfg(test)]
 mod tests {
@@ -162,7 +140,7 @@ mod tests {
 
     #[test]
     fn test_instance_norm_block_def() {
-        let def = InstanceNormBlockDef;
+        let def = InstanceNorm;
         assert_eq!(def.name(), "InstanceNorm");
 
         let shapes = def

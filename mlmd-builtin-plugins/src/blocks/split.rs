@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use mlmd_core::types::*;
+use mlmd_plugin_api::*;
 
 use crate::helpers::get_num;
 
@@ -14,31 +14,17 @@ use crate::helpers::get_num;
 // BlockDef for shape inference
 // ---------------------------------------------------------------------------
 
-struct SplitBlockDef;
+struct Split;
 
-impl BlockDef for SplitBlockDef {
-    fn name(&self) -> &str {
-        "Split"
+impl Plugin for Split {
+    fn params(&self) -> Vec<ParamSpec> {
+        vec![
+            ParamSpec::number("chunks").required(),
+            ParamSpec::number("axis").optional(),
+        ]
     }
-
-    fn params(&self) -> &[ParamSpec] {
-        static PARAMS: std::sync::LazyLock<Vec<ParamSpec>> = std::sync::LazyLock::new(|| {
-            vec![
-                ParamSpec {
-                    name: "chunks".into(),
-                    param_type: ParamType::Number,
-                    required: true,
-                    default: None,
-                },
-                ParamSpec {
-                    name: "axis".into(),
-                    param_type: ParamType::Number,
-                    required: false,
-                    default: None,
-                },
-            ]
-        });
-        &PARAMS
+    fn name(&self) -> &'static str {
+        "Split"
     }
 
     fn infer_shape(
@@ -69,84 +55,67 @@ impl BlockDef for SplitBlockDef {
     fn show_depth(&self) -> bool {
         false
     }
-}
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
+    fn num_outputs(&self) -> Option<usize> {
+        None
+    }
 
-pub fn register() {
-    register_block(Box::new(SplitBlockDef));
-
-    register_block_codegen("Split", "pytorch", pytorch_codegen);
-    register_block_codegen("Split", "keras", keras_codegen);
-    register_block_codegen("Split", "candle", candle_codegen);
-}
-
-// ---------------------------------------------------------------------------
-// Codegen functions
-// ---------------------------------------------------------------------------
-
-fn pytorch_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let n = get_num(&block.params, "chunks").unwrap_or(2.0) as usize;
-    let axis = get_num(&block.params, "axis").unwrap_or(0.0) as isize;
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = torch.chunk({}, {}, dim={})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            n,
-            axis,
-        ),
+    fn codegen(
+        &self,
+        target: &str,
+        block: &Block,
+        input_vars: &[String],
+        output_vars: &[String],
+    ) -> Option<BlockCodegenResult> {
+        match target {
+            "pytorch" => Some({
+                let n = get_num(&block.params, "chunks").unwrap_or(2.0) as usize;
+                let axis = get_num(&block.params, "axis").unwrap_or(0.0) as isize;
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = torch.chunk({}, {}, dim={})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        n,
+                        axis,
+                    ),
+                }
+            }),
+            "keras" => Some({
+                let n = get_num(&block.params, "chunks").unwrap_or(2.0) as usize;
+                let axis = get_num(&block.params, "axis").unwrap_or(0.0) as isize;
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = tf.split({}, {}, axis={})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        n,
+                        axis,
+                    ),
+                }
+            }),
+            "candle" => Some({
+                let n = get_num(&block.params, "chunks").unwrap_or(2.0) as usize;
+                let axis = get_num(&block.params, "axis").unwrap_or(0.0) as isize;
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = {}.chunk({}, {})?;",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        n,
+                        axis,
+                    ),
+                }
+            }),
+            _ => None,
+        }
     }
 }
 
-fn keras_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let n = get_num(&block.params, "chunks").unwrap_or(2.0) as usize;
-    let axis = get_num(&block.params, "axis").unwrap_or(0.0) as isize;
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = tf.split({}, {}, axis={})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            n,
-            axis,
-        ),
-    }
-}
-
-fn candle_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let n = get_num(&block.params, "chunks").unwrap_or(2.0) as usize;
-    let axis = get_num(&block.params, "axis").unwrap_or(0.0) as isize;
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = {}.chunk({}, {})?;",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            n,
-            axis,
-        ),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+register_plugin!(Split);
 
 #[cfg(test)]
 mod tests {
@@ -155,7 +124,7 @@ mod tests {
 
     #[test]
     fn test_split_block_def() {
-        let def = SplitBlockDef;
+        let def = Split;
         assert_eq!(def.name(), "Split");
         assert!(!def.show_depth());
 

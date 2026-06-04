@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use mlmd_core::types::*;
+use mlmd_plugin_api::*;
 
 use crate::helpers::{conv_transpose_output_size, get_num};
 
@@ -14,43 +14,19 @@ use crate::helpers::{conv_transpose_output_size, get_num};
 // BlockDef for shape inference
 // ---------------------------------------------------------------------------
 
-struct TransposedConv2dBlockDef;
+struct TransposedConv2d;
 
-impl BlockDef for TransposedConv2dBlockDef {
-    fn name(&self) -> &str {
-        "TransposedConv2d"
+impl Plugin for TransposedConv2d {
+    fn params(&self) -> Vec<ParamSpec> {
+        vec![
+            ParamSpec::number("filters").required(),
+            ParamSpec::number("kernel").required(),
+            ParamSpec::number("stride").optional(),
+            ParamSpec::number("padding").optional(),
+        ]
     }
-
-    fn params(&self) -> &[ParamSpec] {
-        static PARAMS: std::sync::LazyLock<Vec<ParamSpec>> = std::sync::LazyLock::new(|| {
-            vec![
-                ParamSpec {
-                    name: "filters".into(),
-                    param_type: ParamType::Number,
-                    required: true,
-                    default: None,
-                },
-                ParamSpec {
-                    name: "kernel".into(),
-                    param_type: ParamType::Number,
-                    required: true,
-                    default: None,
-                },
-                ParamSpec {
-                    name: "stride".into(),
-                    param_type: ParamType::Number,
-                    required: false,
-                    default: None,
-                },
-                ParamSpec {
-                    name: "padding".into(),
-                    param_type: ParamType::Number,
-                    required: false,
-                    default: None,
-                },
-            ]
-        });
-        &PARAMS
+    fn name(&self) -> &'static str {
+        "TransposedConv2d"
     }
 
     fn infer_shape(
@@ -92,23 +68,72 @@ impl BlockDef for TransposedConv2dBlockDef {
     fn show_depth(&self) -> bool {
         false
     }
+
+    fn codegen(
+        &self,
+        target: &str,
+        block: &Block,
+        input_vars: &[String],
+        output_vars: &[String],
+    ) -> Option<BlockCodegenResult> {
+        match target {
+            "pytorch" => Some({
+                let in_ch = get_in_ch(block);
+                let filters = get_filters(block);
+                let kernel = get_kernel(block);
+                let stride = get_stride(block);
+                let padding = get_padding(block);
+                BlockCodegenResult {
+                    init: Some(CandleInitOrString::Plain(format!(
+                        "self.{} = nn.ConvTranspose2d({}, {}, {}, stride={}, padding={})",
+                        block.id, in_ch, filters, kernel, stride, padding
+                    ))),
+                    forward: format!(
+                        "{} = self.{}({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        block.id,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "keras" => Some({
+                let filters = get_filters(block);
+                let kernel = get_kernel(block);
+                let stride = get_stride(block);
+                let padding_str = if get_padding(block) == 0 {
+                    "valid"
+                } else {
+                    "same"
+                };
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = keras.layers.Conv2DTranspose({}, {}, strides={}, padding='{}')({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        filters,
+                        kernel,
+                        stride,
+                        padding_str,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "candle" => Some({
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = unimplemented!(\"TransposedConv2d not supported in candle\");  // {}",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            _ => None,
+        }
+    }
 }
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
-
-pub fn register() {
-    register_block(Box::new(TransposedConv2dBlockDef));
-
-    register_block_codegen("TransposedConv2d", "pytorch", pytorch_codegen);
-    register_block_codegen("TransposedConv2d", "keras", keras_codegen);
-    register_block_codegen("TransposedConv2d", "candle", candle_codegen);
-}
-
-// ---------------------------------------------------------------------------
-// Codegen helpers
-// ---------------------------------------------------------------------------
+register_plugin!(TransposedConv2d);
 
 fn get_in_ch(block: &Block) -> usize {
     if let Some(shape) = block.input_shapes.first() {
@@ -160,80 +185,6 @@ fn get_padding(block: &Block) -> usize {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Codegen functions
-// ---------------------------------------------------------------------------
-
-fn pytorch_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let in_ch = get_in_ch(block);
-    let filters = get_filters(block);
-    let kernel = get_kernel(block);
-    let stride = get_stride(block);
-    let padding = get_padding(block);
-    BlockCodegenResult {
-        init: Some(CandleInitOrString::Plain(format!(
-            "self.{} = nn.ConvTranspose2d({}, {}, {}, stride={}, padding={})",
-            block.id, in_ch, filters, kernel, stride, padding
-        ))),
-        forward: format!(
-            "{} = self.{}({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            block.id,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-fn keras_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let filters = get_filters(block);
-    let kernel = get_kernel(block);
-    let stride = get_stride(block);
-    let padding_str = if get_padding(block) == 0 {
-        "valid"
-    } else {
-        "same"
-    };
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = keras.layers.Conv2DTranspose({}, {}, strides={}, padding='{}')({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            filters,
-            kernel,
-            stride,
-            padding_str,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-fn candle_codegen(
-    _block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = unimplemented!(\"TransposedConv2d not supported in candle\");  // {}",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -241,7 +192,7 @@ mod tests {
 
     #[test]
     fn test_transposed_conv2d_block_def() {
-        let def = TransposedConv2dBlockDef;
+        let def = TransposedConv2d;
         assert_eq!(def.name(), "TransposedConv2d");
 
         let mut p = HashMap::new();

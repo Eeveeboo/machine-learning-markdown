@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use mlmd_core::types::*;
+use mlmd_plugin_api::*;
 
 use crate::helpers::get_num;
 
@@ -14,31 +14,17 @@ use crate::helpers::get_num;
 // BlockDef for shape inference
 // ---------------------------------------------------------------------------
 
-struct EmbeddingBlockDef;
+struct Embedding;
 
-impl BlockDef for EmbeddingBlockDef {
-    fn name(&self) -> &str {
-        "Embedding"
+impl Plugin for Embedding {
+    fn params(&self) -> Vec<ParamSpec> {
+        vec![
+            ParamSpec::number("vocab_size").required(),
+            ParamSpec::number("embed_dim").required(),
+        ]
     }
-
-    fn params(&self) -> &[ParamSpec] {
-        static PARAMS: std::sync::LazyLock<Vec<ParamSpec>> = std::sync::LazyLock::new(|| {
-            vec![
-                ParamSpec {
-                    name: "vocab_size".into(),
-                    param_type: ParamType::Number,
-                    required: true,
-                    default: None,
-                },
-                ParamSpec {
-                    name: "embed_dim".into(),
-                    param_type: ParamType::Number,
-                    required: true,
-                    default: None,
-                },
-            ]
-        });
-        &PARAMS
+    fn name(&self) -> &'static str {
+        "Embedding"
     }
 
     fn infer_shape(
@@ -67,23 +53,70 @@ impl BlockDef for EmbeddingBlockDef {
     fn show_depth(&self) -> bool {
         false
     }
+
+    fn codegen(
+        &self,
+        target: &str,
+        block: &Block,
+        input_vars: &[String],
+        output_vars: &[String],
+    ) -> Option<BlockCodegenResult> {
+        match target {
+            "pytorch" => Some({
+                let vocab = get_vocab(block);
+                let embed = get_embed(block);
+                BlockCodegenResult {
+                    init: Some(CandleInitOrString::Plain(format!(
+                        "self.{} = nn.Embedding({}, {})",
+                        block.id, vocab, embed
+                    ))),
+                    forward: format!(
+                        "{} = self.{}({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        block.id,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "keras" => Some({
+                let vocab = get_vocab(block);
+                let embed = get_embed(block);
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = keras.layers.Embedding({}, {})({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        vocab,
+                        embed,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "candle" => Some({
+                let vocab = get_vocab(block);
+                let dim = get_embed(block);
+                BlockCodegenResult {
+                    init: Some(CandleInitOrString::Candle(CandleInit {
+                        field: format!("{}: candle_nn::Embedding", block.id),
+                        body: format!(
+                            "let {} = candle_nn::embedding({}, {}, vb.pp(\"{}\"))?;",
+                            block.id, vocab, dim, block.id
+                        ),
+                    })),
+                    forward: format!(
+                        "{} = self.{}.forward(&{})?;",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        block.id,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            _ => None,
+        }
+    }
 }
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
-
-pub fn register() {
-    register_block(Box::new(EmbeddingBlockDef));
-
-    register_block_codegen("Embedding", "pytorch", pytorch_codegen);
-    register_block_codegen("Embedding", "keras", keras_codegen);
-    register_block_codegen("Embedding", "candle", candle_codegen);
-}
-
-// ---------------------------------------------------------------------------
-// Codegen helpers
-// ---------------------------------------------------------------------------
+register_plugin!(Embedding);
 
 fn get_vocab(block: &Block) -> usize {
     if let Some(ParamValue::Number(n)) = block.params.get("vocab_size") {
@@ -103,78 +136,6 @@ fn get_embed(block: &Block) -> usize {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Codegen functions
-// ---------------------------------------------------------------------------
-
-fn pytorch_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let vocab = get_vocab(block);
-    let embed = get_embed(block);
-    BlockCodegenResult {
-        init: Some(CandleInitOrString::Plain(format!(
-            "self.{} = nn.Embedding({}, {})",
-            block.id, vocab, embed
-        ))),
-        forward: format!(
-            "{} = self.{}({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            block.id,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-fn keras_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let vocab = get_vocab(block);
-    let embed = get_embed(block);
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = keras.layers.Embedding({}, {})({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            vocab,
-            embed,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-fn candle_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let vocab = get_vocab(block);
-    let dim = get_embed(block);
-    BlockCodegenResult {
-        init: Some(CandleInitOrString::Candle(CandleInit {
-            field: format!("{}: candle_nn::Embedding", block.id),
-            body: format!(
-                "let {} = candle_nn::embedding({}, {}, vb.pp(\"{}\"))?;",
-                block.id, vocab, dim, block.id
-            ),
-        })),
-        forward: format!(
-            "{} = self.{}.forward(&{})?;",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            block.id,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -182,7 +143,7 @@ mod tests {
 
     #[test]
     fn test_embedding_block_def() {
-        let def = EmbeddingBlockDef;
+        let def = Embedding;
         assert_eq!(def.name(), "Embedding");
 
         let mut p = HashMap::new();

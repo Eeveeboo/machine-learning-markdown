@@ -58,6 +58,185 @@ pub struct ParamSpec {
 }
 
 // ---------------------------------------------------------------------------
+// ParamSpecBuilder — ergonomic builder for ParamSpec
+// ---------------------------------------------------------------------------
+
+/// Builder for constructing `ParamSpec` values concisely.
+///
+/// Created via the static methods on `ParamSpec`:
+///
+/// ```ignore
+/// let ps = ParamSpec::number("dropout").default_num(0.5);
+/// let pr = ParamSpec::string("activation").required();
+/// ```
+pub struct ParamSpecBuilder {
+    name: String,
+    param_type: ParamType,
+}
+
+impl ParamSpec {
+    /// Create a builder for a number parameter.
+    pub fn number(name: impl Into<String>) -> ParamSpecBuilder {
+        ParamSpecBuilder {
+            name: name.into(),
+            param_type: ParamType::Number,
+        }
+    }
+
+    /// Create a builder for a string parameter.
+    pub fn string(name: impl Into<String>) -> ParamSpecBuilder {
+        ParamSpecBuilder {
+            name: name.into(),
+            param_type: ParamType::String,
+        }
+    }
+
+    /// Create a builder for a boolean parameter.
+    pub fn boolean(name: impl Into<String>) -> ParamSpecBuilder {
+        ParamSpecBuilder {
+            name: name.into(),
+            param_type: ParamType::Bool,
+        }
+    }
+
+    /// Create a builder for a shape parameter.
+    pub fn shape(name: impl Into<String>) -> ParamSpecBuilder {
+        ParamSpecBuilder {
+            name: name.into(),
+            param_type: ParamType::Shape,
+        }
+    }
+
+    /// Create a builder for a bareword parameter.
+    pub fn bareword(name: impl Into<String>) -> ParamSpecBuilder {
+        ParamSpecBuilder {
+            name: name.into(),
+            param_type: ParamType::Bareword,
+        }
+    }
+
+    /// Create a builder for a list parameter.
+    pub fn list(name: impl Into<String>) -> ParamSpecBuilder {
+        ParamSpecBuilder {
+            name: name.into(),
+            param_type: ParamType::List,
+        }
+    }
+}
+
+impl ParamSpecBuilder {
+    /// Mark this parameter as required (no default value).
+    pub fn required(self) -> ParamSpec {
+        ParamSpec {
+            name: self.name,
+            param_type: self.param_type,
+            required: true,
+            default: None,
+        }
+    }
+
+    /// Mark this parameter as optional (no default value).
+    pub fn optional(self) -> ParamSpec {
+        ParamSpec {
+            name: self.name,
+            param_type: self.param_type,
+            required: false,
+            default: None,
+        }
+    }
+
+    /// Set a default number value.
+    pub fn default_num(self, value: f64) -> ParamSpec {
+        use crate::ast::nodes::{NumberVal, SourceLoc};
+        ParamSpec {
+            name: self.name,
+            param_type: self.param_type,
+            required: false,
+            default: Some(ParamValue::Number(Box::new(NumberVal::new(
+                value,
+                SourceLoc {
+                    line: 0,
+                    col: 0,
+                    offset: 0,
+                },
+            )))),
+        }
+    }
+
+    /// Set a default string value.
+    pub fn default_str(self, value: impl Into<String>) -> ParamSpec {
+        use crate::ast::nodes::{SourceLoc, StringVal};
+        ParamSpec {
+            name: self.name,
+            param_type: self.param_type,
+            required: false,
+            default: Some(ParamValue::String(Box::new(StringVal::new(
+                value.into(),
+                SourceLoc {
+                    line: 0,
+                    col: 0,
+                    offset: 0,
+                },
+            )))),
+        }
+    }
+
+    /// Set a default boolean value.
+    pub fn default_bool(self, value: bool) -> ParamSpec {
+        use crate::ast::nodes::{BoolVal, SourceLoc};
+        ParamSpec {
+            name: self.name,
+            param_type: self.param_type,
+            required: false,
+            default: Some(ParamValue::Bool(Box::new(BoolVal::new(
+                value,
+                SourceLoc {
+                    line: 0,
+                    col: 0,
+                    offset: 0,
+                },
+            )))),
+        }
+    }
+
+    /// Set a default bareword value.
+    pub fn default_bareword(self, value: impl Into<String>) -> ParamSpec {
+        use crate::ast::nodes::{BarewordVal, SourceLoc};
+        ParamSpec {
+            name: self.name,
+            param_type: self.param_type,
+            required: false,
+            default: Some(ParamValue::Bareword(Box::new(BarewordVal::new(
+                value.into(),
+                SourceLoc {
+                    line: 0,
+                    col: 0,
+                    offset: 0,
+                },
+            )))),
+        }
+    }
+
+    /// Set a default shape value (list of dimensions).
+    pub fn default_shape(self, dims: Vec<usize>) -> ParamSpec {
+        use crate::ast::nodes::{ShapeVal, SourceLoc};
+        ParamSpec {
+            name: self.name,
+            param_type: self.param_type,
+            required: false,
+            default: Some(ParamValue::Shape(Box::new(ShapeVal::new(
+                dims,
+                SourceLoc {
+                    line: 0,
+                    col: 0,
+                    offset: 0,
+                },
+            )))),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // BlockDef trait
 // ---------------------------------------------------------------------------
 
@@ -89,5 +268,21 @@ pub trait BlockDef: Send + Sync {
     /// Set to `false` for passthrough blocks (activations, merges, etc.).
     fn show_depth(&self) -> bool {
         true
+    }
+
+    /// Number of tensor inputs this block expects.
+    ///
+    /// Return `None` for a variable number of inputs (e.g. `Concat`).
+    /// The default is 1, which covers the vast majority of blocks.
+    fn num_inputs(&self) -> Option<usize> {
+        Some(1)
+    }
+
+    /// Number of tensor outputs this block produces.
+    ///
+    /// Return `None` for a variable number of outputs (e.g. `Split`).
+    /// The default is 1, which covers the vast majority of blocks.
+    fn num_outputs(&self) -> Option<usize> {
+        Some(1)
     }
 }

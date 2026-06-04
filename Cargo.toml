@@ -7,4 +7,6 @@ members = [
     "mlmd-example-plugin",
     "mlmd-examples",
     "mlmd-extension-zed",
+    "mlmd-plugin-api",
+    "mlmd-plugin-api-macros",
 ]

@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use mlmd_core::types::*;
+use mlmd_plugin_api::*;
 
 use crate::helpers::{get_num, get_num_list};
 
@@ -14,23 +14,14 @@ use crate::helpers::{get_num, get_num_list};
 // BlockDef for shape inference
 // ---------------------------------------------------------------------------
 
-struct AdaptiveAvgPoolBlockDef;
+struct AdaptiveAvgPool;
 
-impl BlockDef for AdaptiveAvgPoolBlockDef {
-    fn name(&self) -> &str {
-        "AdaptiveAvgPool"
+impl Plugin for AdaptiveAvgPool {
+    fn params(&self) -> Vec<ParamSpec> {
+        vec![ParamSpec::shape("size").required()]
     }
-
-    fn params(&self) -> &[ParamSpec] {
-        static PARAMS: std::sync::LazyLock<Vec<ParamSpec>> = std::sync::LazyLock::new(|| {
-            vec![ParamSpec {
-                name: "size".into(),
-                param_type: ParamType::Shape,
-                required: true,
-                default: None,
-            }]
-        });
-        &PARAMS
+    fn name(&self) -> &'static str {
+        "AdaptiveAvgPool"
     }
 
     fn infer_shape(
@@ -63,99 +54,78 @@ impl BlockDef for AdaptiveAvgPoolBlockDef {
     fn show_depth(&self) -> bool {
         false
     }
-}
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
-
-pub fn register() {
-    register_block(Box::new(AdaptiveAvgPoolBlockDef));
-
-    register_block_codegen("AdaptiveAvgPool", "pytorch", pytorch_codegen);
-    register_block_codegen("AdaptiveAvgPool", "keras", keras_codegen);
-    register_block_codegen("AdaptiveAvgPool", "candle", candle_codegen);
-}
-
-// ---------------------------------------------------------------------------
-// Codegen functions
-// ---------------------------------------------------------------------------
-
-fn pytorch_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let (out_h, out_w) = if let Some(ParamValue::Shape(s)) = block.params.get("size") {
-        if s.dims.len() >= 2 {
-            (s.dims[0], s.dims[1])
-        } else {
-            (1, 1)
+    fn codegen(
+        &self,
+        target: &str,
+        block: &Block,
+        input_vars: &[String],
+        output_vars: &[String],
+    ) -> Option<BlockCodegenResult> {
+        match target {
+            "pytorch" => Some({
+                let (out_h, out_w) = if let Some(ParamValue::Shape(s)) = block.params.get("size") {
+                    if s.dims.len() >= 2 {
+                        (s.dims[0], s.dims[1])
+                    } else {
+                        (1, 1)
+                    }
+                } else if let Some(v) = get_num(&block.params, "output_size") {
+                    let s = v as usize;
+                    (s, s)
+                } else {
+                    (1, 1)
+                };
+                BlockCodegenResult {
+                    init: Some(CandleInitOrString::Plain(format!(
+                        "self.{} = nn.AdaptiveAvgPool2d(({}, {}))",
+                        block.id, out_h, out_w
+                    ))),
+                    forward: format!(
+                        "{} = self.{}({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        block.id,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "keras" => Some({
+                let (out_h, out_w) = if let Some(ParamValue::Shape(s)) = block.params.get("size") {
+                    if s.dims.len() >= 2 {
+                        (s.dims[0], s.dims[1])
+                    } else {
+                        (1, 1)
+                    }
+                } else {
+                    (1, 1)
+                };
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = keras.layers.Lambda(lambda x: tf.image.resize(x, ({}, {})))({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        out_h,
+                        out_w,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "candle" => Some({
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = {}.mean_keepdim(candle_core::D::Minus1)?.mean_keepdim(candle_core::D::Minus2)?;",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            _ => None,
         }
-    } else if let Some(v) = get_num(&block.params, "output_size") {
-        let s = v as usize;
-        (s, s)
-    } else {
-        (1, 1)
-    };
-    BlockCodegenResult {
-        init: Some(CandleInitOrString::Plain(format!(
-            "self.{} = nn.AdaptiveAvgPool2d(({}, {}))",
-            block.id, out_h, out_w
-        ))),
-        forward: format!(
-            "{} = self.{}({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            block.id,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
     }
 }
 
-fn keras_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let (out_h, out_w) = if let Some(ParamValue::Shape(s)) = block.params.get("size") {
-        if s.dims.len() >= 2 {
-            (s.dims[0], s.dims[1])
-        } else {
-            (1, 1)
-        }
-    } else {
-        (1, 1)
-    };
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = keras.layers.Lambda(lambda x: tf.image.resize(x, ({}, {})))({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            out_h,
-            out_w,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-fn candle_codegen(
-    _block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = {}.mean_keepdim(candle_core::D::Minus1)?.mean_keepdim(candle_core::D::Minus2)?;",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+register_plugin!(AdaptiveAvgPool);
 
 #[cfg(test)]
 mod tests {
@@ -164,7 +134,7 @@ mod tests {
 
     #[test]
     fn test_adaptive_avg_pool_block_def() {
-        let def = AdaptiveAvgPoolBlockDef;
+        let def = AdaptiveAvgPool;
         assert_eq!(def.name(), "AdaptiveAvgPool");
 
         let mut p = HashMap::new();

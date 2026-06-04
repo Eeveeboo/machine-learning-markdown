@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use mlmd_core::types::*;
+use mlmd_plugin_api::*;
 
 use crate::helpers::get_num;
 
@@ -14,23 +14,14 @@ use crate::helpers::get_num;
 // BlockDef for shape inference
 // ---------------------------------------------------------------------------
 
-struct RepeatBlockDef;
+struct Repeat;
 
-impl BlockDef for RepeatBlockDef {
-    fn name(&self) -> &str {
-        "Repeat"
+impl Plugin for Repeat {
+    fn params(&self) -> Vec<ParamSpec> {
+        vec![ParamSpec::number("times").required()]
     }
-
-    fn params(&self) -> &[ParamSpec] {
-        static PARAMS: std::sync::LazyLock<Vec<ParamSpec>> = std::sync::LazyLock::new(|| {
-            vec![ParamSpec {
-                name: "times".into(),
-                param_type: ParamType::Number,
-                required: true,
-                default: None,
-            }]
-        });
-        &PARAMS
+    fn name(&self) -> &'static str {
+        "Repeat"
     }
 
     fn infer_shape(
@@ -55,78 +46,57 @@ impl BlockDef for RepeatBlockDef {
     fn show_depth(&self) -> bool {
         false
     }
-}
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
-
-pub fn register() {
-    register_block(Box::new(RepeatBlockDef));
-
-    register_block_codegen("Repeat", "pytorch", pytorch_codegen);
-    register_block_codegen("Repeat", "keras", keras_codegen);
-    register_block_codegen("Repeat", "candle", candle_codegen);
-}
-
-// ---------------------------------------------------------------------------
-// Codegen functions
-// ---------------------------------------------------------------------------
-
-fn pytorch_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let times = get_num(&block.params, "times").unwrap_or(1.0) as usize;
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = {}.repeat({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            times,
-        ),
+    fn codegen(
+        &self,
+        target: &str,
+        block: &Block,
+        input_vars: &[String],
+        output_vars: &[String],
+    ) -> Option<BlockCodegenResult> {
+        match target {
+            "pytorch" => Some({
+                let times = get_num(&block.params, "times").unwrap_or(1.0) as usize;
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = {}.repeat({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        times,
+                    ),
+                }
+            }),
+            "keras" => Some({
+                let times = get_num(&block.params, "times").unwrap_or(1.0) as usize;
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = keras.layers.RepeatVector({})({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        times,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "candle" => Some({
+                let times = get_num(&block.params, "times").unwrap_or(1.0) as usize;
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = {}.repeat(&[{}])?;",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        times,
+                    ),
+                }
+            }),
+            _ => None,
+        }
     }
 }
 
-fn keras_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let times = get_num(&block.params, "times").unwrap_or(1.0) as usize;
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = keras.layers.RepeatVector({})({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            times,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-fn candle_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let times = get_num(&block.params, "times").unwrap_or(1.0) as usize;
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = {}.repeat(&[{}])?;",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            times,
-        ),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+register_plugin!(Repeat);
 
 #[cfg(test)]
 mod tests {
@@ -134,7 +104,7 @@ mod tests {
 
     #[test]
     fn test_repeat_block_def() {
-        let def = RepeatBlockDef;
+        let def = Repeat;
         assert_eq!(def.name(), "Repeat");
         assert!(!def.show_depth());
 

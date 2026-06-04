@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use mlmd_core::types::*;
+use mlmd_plugin_api::*;
 
 use crate::helpers::get_num;
 
@@ -14,23 +14,14 @@ use crate::helpers::get_num;
 // BlockDef for shape inference
 // ---------------------------------------------------------------------------
 
-struct LeakyReLUBlockDef;
+struct LeakyReLU;
 
-impl BlockDef for LeakyReLUBlockDef {
-    fn name(&self) -> &str {
-        "LeakyReLU"
+impl Plugin for LeakyReLU {
+    fn params(&self) -> Vec<ParamSpec> {
+        vec![ParamSpec::number("negative_slope").optional()]
     }
-
-    fn params(&self) -> &[ParamSpec] {
-        static PARAMS: std::sync::LazyLock<Vec<ParamSpec>> = std::sync::LazyLock::new(|| {
-            vec![ParamSpec {
-                name: "negative_slope".into(),
-                param_type: ParamType::Number,
-                required: false,
-                default: None,
-            }]
-        });
-        &PARAMS
+    fn name(&self) -> &'static str {
+        "LeakyReLU"
     }
 
     fn infer_shape(
@@ -55,81 +46,60 @@ impl BlockDef for LeakyReLUBlockDef {
     fn show_depth(&self) -> bool {
         false
     }
-}
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
-
-pub fn register() {
-    register_block(Box::new(LeakyReLUBlockDef));
-
-    register_block_codegen("LeakyReLU", "pytorch", pytorch_codegen);
-    register_block_codegen("LeakyReLU", "keras", keras_codegen);
-    register_block_codegen("LeakyReLU", "candle", candle_codegen);
-}
-
-// ---------------------------------------------------------------------------
-// Codegen functions
-// ---------------------------------------------------------------------------
-
-fn pytorch_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let slope = get_num(&block.params, "negative_slope").unwrap_or(0.01);
-    BlockCodegenResult {
-        init: Some(CandleInitOrString::Plain(format!(
-            "self.{} = nn.LeakyReLU({})",
-            block.id, slope
-        ))),
-        forward: format!(
-            "{} = self.{}({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            block.id,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
+    fn codegen(
+        &self,
+        target: &str,
+        block: &Block,
+        input_vars: &[String],
+        output_vars: &[String],
+    ) -> Option<BlockCodegenResult> {
+        match target {
+            "pytorch" => Some({
+                let slope = get_num(&block.params, "negative_slope").unwrap_or(0.01);
+                BlockCodegenResult {
+                    init: Some(CandleInitOrString::Plain(format!(
+                        "self.{} = nn.LeakyReLU({})",
+                        block.id, slope
+                    ))),
+                    forward: format!(
+                        "{} = self.{}({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        block.id,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "keras" => Some({
+                let slope = get_num(&block.params, "negative_slope").unwrap_or(0.01);
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = keras.layers.LeakyReLU(alpha={})({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        slope,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "candle" => Some({
+                let slope = get_num(&block.params, "negative_slope").unwrap_or(0.01);
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = {}.leaky_relu({})?;",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        slope,
+                    ),
+                }
+            }),
+            _ => None,
+        }
     }
 }
 
-fn keras_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let slope = get_num(&block.params, "negative_slope").unwrap_or(0.01);
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = keras.layers.LeakyReLU(alpha={})({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            slope,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-fn candle_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let slope = get_num(&block.params, "negative_slope").unwrap_or(0.01);
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = {}.leaky_relu({})?;",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            slope,
-        ),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+register_plugin!(LeakyReLU);
 
 #[cfg(test)]
 mod tests {
@@ -137,7 +107,7 @@ mod tests {
 
     #[test]
     fn test_leaky_relu_block_def() {
-        let def = LeakyReLUBlockDef;
+        let def = LeakyReLU;
         assert_eq!(def.name(), "LeakyReLU");
         assert!(!def.show_depth());
 

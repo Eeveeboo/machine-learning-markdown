@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use mlmd_core::types::*;
+use mlmd_plugin_api::*;
 
 use crate::helpers::get_num;
 
@@ -14,31 +14,17 @@ use crate::helpers::get_num;
 // BlockDef for shape inference
 // ---------------------------------------------------------------------------
 
-struct LSTMBlockDef;
+struct LSTM;
 
-impl BlockDef for LSTMBlockDef {
-    fn name(&self) -> &str {
-        "LSTM"
+impl Plugin for LSTM {
+    fn params(&self) -> Vec<ParamSpec> {
+        vec![
+            ParamSpec::number("hidden_size").required(),
+            ParamSpec::number("num_layers").optional(),
+        ]
     }
-
-    fn params(&self) -> &[ParamSpec] {
-        static PARAMS: std::sync::LazyLock<Vec<ParamSpec>> = std::sync::LazyLock::new(|| {
-            vec![
-                ParamSpec {
-                    name: "hidden_size".into(),
-                    param_type: ParamType::Number,
-                    required: true,
-                    default: None,
-                },
-                ParamSpec {
-                    name: "num_layers".into(),
-                    param_type: ParamType::Number,
-                    required: false,
-                    default: None,
-                },
-            ]
-        });
-        &PARAMS
+    fn name(&self) -> &'static str {
+        "LSTM"
     }
 
     fn infer_shape(
@@ -74,23 +60,76 @@ impl BlockDef for LSTMBlockDef {
     fn show_depth(&self) -> bool {
         false
     }
+
+    fn num_outputs(&self) -> Option<usize> {
+        Some(2)
+    }
+
+    fn codegen(
+        &self,
+        target: &str,
+        block: &Block,
+        input_vars: &[String],
+        output_vars: &[String],
+    ) -> Option<BlockCodegenResult> {
+        match target {
+            "pytorch" => Some({
+                let input_shape = block.input_shapes.first().cloned().unwrap_or_default();
+                let input_size = input_shape.last().copied().unwrap_or(0);
+                let hidden = get_hidden(block);
+                let layers = get_num(&block.params, "num_layers").unwrap_or(1.0) as usize;
+                BlockCodegenResult {
+                    init: Some(CandleInitOrString::Plain(format!(
+                        "self.{} = nn.LSTM({}, {}, num_layers={}, batch_first=True)",
+                        block.id, input_size, hidden, layers
+                    ))),
+                    forward: format!(
+                        "{} = self.{}({})[0]",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        block.id,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "keras" => Some({
+                let hidden = get_hidden(block);
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = keras.layers.LSTM({}, return_sequences=True)({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        hidden,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "candle" => Some({
+                let input_shape = block.input_shapes.first().cloned().unwrap_or_default();
+                let input_size = input_shape.last().copied().unwrap_or(0);
+                let hidden = get_hidden(block);
+                BlockCodegenResult {
+                    init: Some(CandleInitOrString::Candle(CandleInit {
+                        field: format!("{}: candle_nn::LSTM", block.id),
+                        body: format!(
+                            "let {} = candle_nn::lstm({}, {}, candle_nn::LSTMConfig::default(), vb.pp(\"{}\"))?;",
+                            block.id, input_size, hidden, block.id
+                        ),
+                    })),
+                    forward: format!(
+                        "let {} = {{ let states = candle_nn::RNN::seq(&self.{}, &{})?; candle_nn::RNN::states_to_tensor(&self.{}, &states)? }};",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        block.id,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        block.id,
+                    ),
+                }
+            }),
+            _ => None,
+        }
+    }
 }
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
-
-pub fn register() {
-    register_block(Box::new(LSTMBlockDef));
-
-    register_block_codegen("LSTM", "pytorch", pytorch_codegen);
-    register_block_codegen("LSTM", "keras", keras_codegen);
-    register_block_codegen("LSTM", "candle", candle_codegen);
-}
-
-// ---------------------------------------------------------------------------
-// Codegen helpers
-// ---------------------------------------------------------------------------
+register_plugin!(LSTM);
 
 fn get_hidden(block: &Block) -> usize {
     if let Some(ParamValue::Number(n)) = block.params.get("hidden_size") {
@@ -102,80 +141,6 @@ fn get_hidden(block: &Block) -> usize {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Codegen functions
-// ---------------------------------------------------------------------------
-
-fn pytorch_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let input_shape = block.input_shapes.first().cloned().unwrap_or_default();
-    let input_size = input_shape.last().copied().unwrap_or(0);
-    let hidden = get_hidden(block);
-    let layers = get_num(&block.params, "num_layers").unwrap_or(1.0) as usize;
-    BlockCodegenResult {
-        init: Some(CandleInitOrString::Plain(format!(
-            "self.{} = nn.LSTM({}, {}, num_layers={}, batch_first=True)",
-            block.id, input_size, hidden, layers
-        ))),
-        forward: format!(
-            "{} = self.{}({})[0]",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            block.id,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-fn keras_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let hidden = get_hidden(block);
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = keras.layers.LSTM({}, return_sequences=True)({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            hidden,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-fn candle_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let input_shape = block.input_shapes.first().cloned().unwrap_or_default();
-    let input_size = input_shape.last().copied().unwrap_or(0);
-    let hidden = get_hidden(block);
-    BlockCodegenResult {
-        init: Some(CandleInitOrString::Candle(CandleInit {
-            field: format!("{}: candle_nn::LSTM", block.id),
-            body: format!(
-                "let {} = candle_nn::lstm({}, {}, candle_nn::LSTMConfig::default(), vb.pp(\"{}\"))?;",
-                block.id, input_size, hidden, block.id
-            ),
-        })),
-        forward: format!(
-            "let {} = {{ let states = candle_nn::RNN::seq(&self.{}, &{})?; candle_nn::RNN::states_to_tensor(&self.{}, &states)? }};",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            block.id,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            block.id,
-        ),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -183,7 +148,7 @@ mod tests {
 
     #[test]
     fn test_lstm_block_def() {
-        let def = LSTMBlockDef;
+        let def = LSTM;
         assert_eq!(def.name(), "LSTM");
 
         let mut p = HashMap::new();

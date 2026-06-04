@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use mlmd_core::types::*;
+use mlmd_plugin_api::*;
 
 use crate::helpers::get_num;
 
@@ -27,37 +27,18 @@ fn pool_out(size: usize, kernel: usize, stride: usize, padding: usize) -> usize 
 // BlockDef for shape inference
 // ---------------------------------------------------------------------------
 
-struct MaxPoolBlockDef;
+struct MaxPool;
 
-impl BlockDef for MaxPoolBlockDef {
-    fn name(&self) -> &str {
-        "MaxPool"
+impl Plugin for MaxPool {
+    fn params(&self) -> Vec<ParamSpec> {
+        vec![
+            ParamSpec::number("kernel").required(),
+            ParamSpec::number("stride").optional(),
+            ParamSpec::number("padding").optional(),
+        ]
     }
-
-    fn params(&self) -> &[ParamSpec] {
-        static PARAMS: std::sync::LazyLock<Vec<ParamSpec>> = std::sync::LazyLock::new(|| {
-            vec![
-                ParamSpec {
-                    name: "kernel".into(),
-                    param_type: ParamType::Number,
-                    required: true,
-                    default: None,
-                },
-                ParamSpec {
-                    name: "stride".into(),
-                    param_type: ParamType::Number,
-                    required: false,
-                    default: None,
-                },
-                ParamSpec {
-                    name: "padding".into(),
-                    param_type: ParamType::Number,
-                    required: false,
-                    default: None,
-                },
-            ]
-        });
-        &PARAMS
+    fn name(&self) -> &'static str {
+        "MaxPool"
     }
 
     fn infer_shape(
@@ -91,23 +72,88 @@ impl BlockDef for MaxPoolBlockDef {
     fn show_depth(&self) -> bool {
         false
     }
+
+    fn codegen(
+        &self,
+        target: &str,
+        block: &Block,
+        input_vars: &[String],
+        output_vars: &[String],
+    ) -> Option<BlockCodegenResult> {
+        match target {
+            "pytorch" => Some({
+                let kernel = get_kernel_ps(block);
+                let stride = get_stride_ps(block, kernel);
+                BlockCodegenResult {
+                    init: Some(CandleInitOrString::Plain(format!(
+                        "self.{} = nn.MaxPool2d({}, stride={})",
+                        block.id, kernel, stride
+                    ))),
+                    forward: format!(
+                        "{} = self.{}({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        block.id,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "keras" => Some({
+                let kernel = get_kernel_ps(block);
+                let stride = get_stride_ps(block, kernel);
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = keras.layers.MaxPooling2D(pool_size={}, strides={})({})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        kernel,
+                        stride,
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "candle" => Some({
+                let kernel = get_kernel_ps(block);
+                let stride = get_stride_ps(block, kernel);
+                let padding = get_padding_ps(block);
+                let pad_prefix = if padding > 0 {
+                    format!(
+                        "{}.pad_with_zeros(2, {}, {})?.pad_with_zeros(3, {}, {})?",
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        padding,
+                        padding,
+                        padding,
+                        padding
+                    )
+                } else {
+                    input_vars.first().cloned().unwrap_or_default()
+                };
+                let method = if stride != kernel {
+                    "max_pool2d_with_stride"
+                } else {
+                    "max_pool2d"
+                };
+                let args = if stride != kernel {
+                    format!("{}, {}", kernel, stride)
+                } else {
+                    format!("{}", kernel)
+                };
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = {}.{}({})?;",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        pad_prefix,
+                        method,
+                        args,
+                    ),
+                }
+            }),
+            _ => None,
+        }
+    }
 }
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
-
-pub fn register() {
-    register_block(Box::new(MaxPoolBlockDef));
-
-    register_block_codegen("MaxPool", "pytorch", pytorch_codegen);
-    register_block_codegen("MaxPool", "keras", keras_codegen);
-    register_block_codegen("MaxPool", "candle", candle_codegen);
-}
-
-// ---------------------------------------------------------------------------
-// Codegen helpers
-// ---------------------------------------------------------------------------
+register_plugin!(MaxPool);
 
 fn get_kernel_ps(block: &Block) -> usize {
     if let Some(ParamValue::Number(n)) = block.params.get("kernel") {
@@ -137,96 +183,6 @@ fn get_padding_ps(block: &Block) -> usize {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Codegen functions
-// ---------------------------------------------------------------------------
-
-fn pytorch_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let kernel = get_kernel_ps(block);
-    let stride = get_stride_ps(block, kernel);
-    BlockCodegenResult {
-        init: Some(CandleInitOrString::Plain(format!(
-            "self.{} = nn.MaxPool2d({}, stride={})",
-            block.id, kernel, stride
-        ))),
-        forward: format!(
-            "{} = self.{}({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            block.id,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-fn keras_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let kernel = get_kernel_ps(block);
-    let stride = get_stride_ps(block, kernel);
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = keras.layers.MaxPooling2D(pool_size={}, strides={})({})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            kernel,
-            stride,
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-        ),
-    }
-}
-
-fn candle_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let kernel = get_kernel_ps(block);
-    let stride = get_stride_ps(block, kernel);
-    let padding = get_padding_ps(block);
-    let pad_prefix = if padding > 0 {
-        format!(
-            "{}.pad_with_zeros(2, {}, {})?.pad_with_zeros(3, {}, {})?",
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            padding,
-            padding,
-            padding,
-            padding
-        )
-    } else {
-        input_vars.first().cloned().unwrap_or_default()
-    };
-    let method = if stride != kernel {
-        "max_pool2d_with_stride"
-    } else {
-        "max_pool2d"
-    };
-    let args = if stride != kernel {
-        format!("{}, {}", kernel, stride)
-    } else {
-        format!("{}", kernel)
-    };
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = {}.{}({})?;",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            pad_prefix,
-            method,
-            args,
-        ),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -234,7 +190,7 @@ mod tests {
 
     #[test]
     fn test_max_pool_block_def() {
-        let def = MaxPoolBlockDef;
+        let def = MaxPool;
         assert_eq!(def.name(), "MaxPool");
 
         let mut p = HashMap::new();

@@ -6,21 +6,20 @@
 
 use std::collections::HashMap;
 
-use mlmd_core::types::*;
+use mlmd_plugin_api::*;
 
 // ---------------------------------------------------------------------------
 // BlockDef for shape inference
 // ---------------------------------------------------------------------------
 
-struct MatMulBlockDef;
+struct MatMul;
 
-impl BlockDef for MatMulBlockDef {
-    fn name(&self) -> &str {
-        "MatMul"
+impl Plugin for MatMul {
+    fn params(&self) -> Vec<ParamSpec> {
+        vec![]
     }
-
-    fn params(&self) -> &[ParamSpec] {
-        &[]
+    fn name(&self) -> &'static str {
+        "MatMul"
     }
 
     fn infer_shape(
@@ -69,88 +68,71 @@ impl BlockDef for MatMulBlockDef {
     fn show_depth(&self) -> bool {
         false
     }
-}
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
+    fn num_inputs(&self) -> Option<usize> {
+        Some(2)
+    }
 
-pub fn register() {
-    register_block(Box::new(MatMulBlockDef));
-
-    register_block_codegen("MatMul", "pytorch", pytorch_codegen);
-    register_block_codegen("MatMul", "keras", keras_codegen);
-    register_block_codegen("MatMul", "candle", candle_codegen);
-}
-
-// ---------------------------------------------------------------------------
-// Codegen functions
-// ---------------------------------------------------------------------------
-
-fn pytorch_codegen(
-    _block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = torch.matmul({}, {})",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.get(1).map(|s| s.as_str()).unwrap_or("?"),
-        ),
+    fn codegen(
+        &self,
+        target: &str,
+        block: &Block,
+        input_vars: &[String],
+        output_vars: &[String],
+    ) -> Option<BlockCodegenResult> {
+        match target {
+            "pytorch" => Some({
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = torch.matmul({}, {})",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.get(1).map(|s| s.as_str()).unwrap_or("?"),
+                    ),
+                }
+            }),
+            "keras" => Some({
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = keras.layers.Dot(axes=-1)([{}])",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.join(", "),
+                    ),
+                }
+            }),
+            "candle" => Some({
+                let shape_a = block.input_shapes.first().cloned().unwrap_or_default();
+                let shape_b = block.input_shapes.get(1).cloned().unwrap_or_default();
+                let needs_transpose = shape_a.len() >= 2
+                    && shape_b.len() >= 2
+                    && shape_a[shape_a.len() - 1] == shape_b[shape_b.len() - 1]
+                    && shape_a[shape_a.len() - 1] != shape_b[shape_b.len() - 2];
+                let rhs = if needs_transpose {
+                    format!(
+                        "{}.t()?",
+                        input_vars.get(1).map(|s| s.as_str()).unwrap_or("?")
+                    )
+                } else {
+                    input_vars.get(1).cloned().unwrap_or_default()
+                };
+                BlockCodegenResult {
+                    init: None,
+                    forward: format!(
+                        "{} = {}.matmul(&{})?;",
+                        output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        rhs,
+                    ),
+                }
+            }),
+            _ => None,
+        }
     }
 }
 
-fn keras_codegen(
-    _block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = keras.layers.Dot(axes=-1)([{}])",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.join(", "),
-        ),
-    }
-}
-
-fn candle_codegen(
-    block: &Block,
-    input_vars: &[String],
-    output_vars: &[String],
-) -> BlockCodegenResult {
-    let shape_a = block.input_shapes.first().cloned().unwrap_or_default();
-    let shape_b = block.input_shapes.get(1).cloned().unwrap_or_default();
-    let needs_transpose = shape_a.len() >= 2
-        && shape_b.len() >= 2
-        && shape_a[shape_a.len() - 1] == shape_b[shape_b.len() - 1]
-        && shape_a[shape_a.len() - 1] != shape_b[shape_b.len() - 2];
-    let rhs = if needs_transpose {
-        format!(
-            "{}.t()?",
-            input_vars.get(1).map(|s| s.as_str()).unwrap_or("?")
-        )
-    } else {
-        input_vars.get(1).cloned().unwrap_or_default()
-    };
-    BlockCodegenResult {
-        init: None,
-        forward: format!(
-            "{} = {}.matmul(&{})?;",
-            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            rhs,
-        ),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+register_plugin!(MatMul);
 
 #[cfg(test)]
 mod tests {
@@ -158,7 +140,7 @@ mod tests {
 
     #[test]
     fn test_mat_mul_block_def() {
-        let def = MatMulBlockDef;
+        let def = MatMul;
         assert_eq!(def.name(), "MatMul");
         assert!(!def.show_depth());
 
