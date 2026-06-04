@@ -1,16 +1,13 @@
 .env*
-node_modules/
-dist/
-*.js.map
-.pnp.*
-.yarn/
 .weave/
 .test/
 .DS_Store
 .opencode/
 
-# Zed extension (Rust)
+# Rust build artifacts
 target/
+
+# Zed extension build artifacts
 extension.wasm
 zed-mlmd/grammars/mlmd/src/grammar.json
 zed-mlmd/grammars/mlmd/src/node-types.json
@@ -24,3 +21,6 @@ zed-mlmd/grammars/mlmd/node_modules/
 zed-mlmd/grammars/mlmd/Cargo.lock
 zed-mlmd/grammars/.bare-mlmd/
 grammars/
+examples/.venv/
+examples/.pytest_cache/
+examples/__pycache__/

@@ -1,0 +1,25 @@
+import tensorflow as tf
+from tensorflow import keras
+
+
+def build_model():
+    inputs = keras.Input(shape=(64, 64,))  # [1, 64, 64]
+    x = keras.layers.Conv2D(32, 3, strides=1, padding='same')(inputs)  # [32, 64, 64]
+    enc1_skip = keras.layers.ReLU()(x)  # [32, 64, 64]
+    x = keras.layers.MaxPooling2D(pool_size=2, strides=2)(enc1_skip)  # [32, 32, 32]
+    x = keras.layers.Conv2D(64, 3, strides=1, padding='same')(x)  # [64, 32, 32]
+    enc2_skip = keras.layers.ReLU()(x)  # [64, 32, 32]
+    x = keras.layers.MaxPooling2D(pool_size=2, strides=2)(enc2_skip)  # [64, 16, 16]
+    x = keras.layers.Conv2D(128, 3, strides=1, padding='same')(x)  # [128, 16, 16]
+    bottleneck = keras.layers.ReLU()(x)  # [128, 16, 16]
+    up1 = keras.layers.Conv2DTranspose(64, 2, strides=2, padding='valid')(bottleneck)  # [64, 32, 32]
+    x = keras.layers.Concatenate(axis=0)([up1, enc2_skip])  # [128, 32, 32]
+    x = keras.layers.Conv2D(64, 3, strides=1, padding='same')(x)  # [64, 32, 32]
+    dec1 = keras.layers.ReLU()(x)  # [64, 32, 32]
+    up2 = keras.layers.Conv2DTranspose(32, 2, strides=2, padding='valid')(dec1)  # [32, 64, 64]
+    x = keras.layers.Concatenate(axis=0)([up2, enc1_skip])  # [64, 64, 64]
+    x = keras.layers.Conv2D(32, 3, strides=1, padding='same')(x)  # [32, 64, 64]
+    x = keras.layers.ReLU()(x)  # [32, 64, 64]
+    x = keras.layers.Conv2D(1, 1, strides=1, padding='valid')(x)  # [1, 64, 64]
+    # output  # [1, 64, 64]
+    return keras.Model(inputs=inputs, outputs=x)

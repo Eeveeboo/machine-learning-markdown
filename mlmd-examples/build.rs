@@ -31,7 +31,7 @@ fn main() {
             let file_stem = path.file_stem().unwrap().to_str().unwrap().to_string();
             let absolute_path =
                 fs::canonicalize(&path).expect("failed to canonicalize example file path");
-            let mod_name = file_stem.to_lowercase();
+            let mod_name = file_stem.to_lowercase().replace(".", "_");
             model_modules.push(format!(
                 "#[cfg(test)]\nmod {mod_name} {{ include!(\"{path}\"); }}\n",
                 mod_name = mod_name,

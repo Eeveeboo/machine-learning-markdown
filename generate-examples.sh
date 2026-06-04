@@ -1,23 +1,31 @@
-# First build the CLI, then regenerate all example outputs
-# Run from repo root after `npm install && npm run build`
+#!/usr/bin/env bash
+# Regenerate all example outputs from .mlmd source files.
+# Run from repo root. Requires the mlmd CLI to be built.
+#
+#   cargo build --release -p mlmd
+#   ./generate-examples.sh
+#
+# Or via make:
+#   make generate-examples
 
-npm run build
-npm link
+set -euo pipefail
 
-mlmd visualize examples/attention.mlmd -o examples/attention.svg
-mlmd visualize examples/inception.mlmd -o examples/inception.svg
-mlmd visualize examples/lenet.mlmd -o examples/lenet.svg
-mlmd visualize examples/resnet-bottleneck.mlmd -o examples/resnet-bottleneck.svg
-mlmd visualize examples/unet.mlmd -o examples/unet.svg
+MLMD="${MLMD:-cargo run -p mlmd --}"
 
-mlmd generate examples/attention.mlmd -o examples -t candle
-mlmd generate examples/inception.mlmd -o examples -t candle
-mlmd generate examples/lenet.mlmd -o examples -t candle
-mlmd generate examples/resnet-bottleneck.mlmd -o examples -t candle
-mlmd generate examples/unet.mlmd -o examples -t candle
+$MLMD visualize examples/attention.mlmd -o examples/attention.svg
+$MLMD visualize examples/inception.mlmd -o examples/inception.svg
+$MLMD visualize examples/lenet.mlmd -o examples/lenet.svg
+$MLMD visualize examples/resnet-bottleneck.mlmd -o examples/resnet-bottleneck.svg
+$MLMD visualize examples/unet.mlmd -o examples/unet.svg
 
-mlmd generate examples/attention.mlmd -o examples -t pytorch
-mlmd generate examples/inception.mlmd -o examples -t pytorch
-mlmd generate examples/lenet.mlmd -o examples -t pytorch
-mlmd generate examples/resnet-bottleneck.mlmd -o examples -t pytorch
-mlmd generate examples/unet.mlmd -o examples -t pytorch
+$MLMD generate examples/attention.mlmd -o examples -t candle
+$MLMD generate examples/inception.mlmd -o examples -t candle
+$MLMD generate examples/lenet.mlmd -o examples -t candle
+$MLMD generate examples/resnet-bottleneck.mlmd -o examples -t candle
+$MLMD generate examples/unet.mlmd -o examples -t candle
+
+$MLMD generate examples/attention.mlmd -o examples -t pytorch
+$MLMD generate examples/inception.mlmd -o examples -t pytorch
+$MLMD generate examples/lenet.mlmd -o examples -t pytorch
+$MLMD generate examples/resnet-bottleneck.mlmd -o examples -t pytorch
+$MLMD generate examples/unet.mlmd -o examples -t pytorch

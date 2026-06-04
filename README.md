@@ -10,7 +10,7 @@ MLMD is a DSL (domain-specific language) for describing neural network architect
 - **Keras code** — functional API models
 - **Candle (Rust) code** — struct + impl for the [Candle](https://github.com/huggingface/candle) framework
 
-The toolchain includes a CLI, a programmatic TypeScript API, a tree-sitter grammar, an LSP server, and editor extensions for VS Code and Zed.
+The toolchain includes a CLI, a Rust API, a tree-sitter grammar, an LSP server, and editor extensions for VS Code and Zed.
 
 ---
 
@@ -26,7 +26,7 @@ The toolchain includes a CLI, a programmatic TypeScript API, a tree-sitter gramm
 - [Editor Support](#editor-support)
 - [Plugin System](#plugin-system)
 - [LSP Features](#lsp-features)
-- [Programmatic API](#programmatic-api)
+- [Rust API](#rust-api)
 - [Development](#development)
 
 ---
@@ -69,32 +69,31 @@ Input(shape=(1,64,64))
                  -> Conv2d(filters=32, kernel=3, padding=1) -> ReLU
                  -> Conv2d(filters=1, kernel=1)
                  -> Output
-
 ```
 
 | Renders as                |
 |---------------------------|
-| ![](./examples/unet.svg) |
+| ![](./examples/unet.svg)  |
 
-From the repository root, run:
+From the repository root, build and run:
 
 ```bash
-# Visualize as SVG
-npx tsx bin/mlmd.ts visualize lenet.mlmd -o lenet.svg
+# Build the CLI
+cargo build --release -p mlmd
 
-# Generate PyTorch code
-npx tsx bin/mlmd.ts generate examples/lenet.mlmd -t pytorch -o ./out
+# Run directly with cargo
+cargo run -p mlmd -- visualize examples/lenet.mlmd -o lenet.svg
 
-# Lint for errors
-npx tsx bin/mlmd.ts lint examples/lenet.mlmd
+# Or use the built binary
+./target/release/mlmd visualize examples/lenet.mlmd -o lenet.svg
 ```
 
-After building (see [Installation](#installation)), use the shorter form:
+Alternatively, use the `Makefile`:
 
 ```bash
-mlmd visualize lenet.mlmd -o lenet.svg
-mlmd generate examples/lenet.mlmd -t pytorch -o ./out
-mlmd lint examples/lenet.mlmd
+make build
+make generate-examples
+make test
 ```
 
 ---
@@ -103,32 +102,31 @@ mlmd lint examples/lenet.mlmd
 
 ### Prerequisites
 
-- **Node.js** 20+ (uses ES2022 features)
-- **npm** 10+
+- **Rust toolchain** (stable) — install via [rustup](https://rustup.rs/)
+- **Tree-sitter CLI** (optional, for grammar development): `npm install -g tree-sitter-cli`
 
-### Clone and Install
+### Clone and Build
 
 ```bash
 git clone https://github.com/Eeveeboo/machine-learning-markdown.git
 cd machine-learning-markdown
-npm install
-npm run build
+cargo build --workspace
 ```
 
-This compiles the TypeScript source to `dist/` and creates the `mlmd` CLI binary at `dist/bin/mlmd.js`.
+This builds all crates including the `mlmd` CLI binary at `target/debug/mlmd`.
 
-### Global install (symlink)
+### Install Globally
 
 ```bash
-npm install -g .
+cargo install --path mlmd
 mlmd --help
 ```
 
-Or link locally for development:
+Or symlink the release binary:
 
 ```bash
-npm link
-mlmd --help
+cargo build --release -p mlmd
+ln -s "$(pwd)/target/release/mlmd" /usr/local/bin/mlmd
 ```
 
 ---
@@ -152,6 +150,7 @@ Commands:
   lint [options] <file>         Lint a .mlmd file for errors and warnings
   lsp [options]                 Start the Language Server Protocol server
   install [options] <command>   Install MLMD editor extensions
+  plugin [options] <command>    Manage external plugins (list, install, info)
   help [command]                display help for command
 ```
 
@@ -216,6 +215,16 @@ mlmd install vscode                                # install VS Code extension
 mlmd install zed                                   # prepare Zed dev extension
 ```
 
+### `mlmd plugin <command>`
+
+Manage external plugins.
+
+```bash
+mlmd plugin list                                   # list installed plugins
+mlmd plugin install <path>                         # install a plugin from path
+mlmd plugin info <name>                            # show plugin details
+```
+
 ---
 
 ## Configuration
@@ -235,7 +244,7 @@ Create a `.mlmdrc` JSON file in your project root for shared defaults:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `plugins` | `string` | Path to a directory of custom block plugins |
+| `plugins` | `string` | Path to a directory of custom block plugins (WASM components) |
 | `targets` | `array` | List of default code generation targets |
 
 When no `-t`/`--target` is passed, `mlmd generate` uses the targets from `.mlmdrc`.
@@ -396,7 +405,7 @@ examples/
 To regenerate all examples:
 
 ```bash
-./generate-examples.sh
+make generate-examples
 ```
 
 ---
@@ -408,8 +417,9 @@ To regenerate all examples:
 **Option A — Automatic install:**
 
 ```bash
-# From the repo root (after npm install && npm run build)
-mlmd install vscode
+# Build the CLI first
+cargo build --release -p mlmd
+./target/release/mlmd install vscode
 ```
 
 ### Zed
@@ -417,8 +427,9 @@ mlmd install vscode
 The `mlmd install zed` command sets up a full dev extension from your local checkout:
 
 ```bash
-# From the repo root (after npm install && npm run build)
-mlmd install zed
+# Build the CLI first
+cargo build --release -p mlmd
+./target/release/mlmd install zed
 ```
 
 This performs the full build pipeline:
@@ -450,25 +461,34 @@ The LSP server (`mlmd lsp`) communicates over stdin/stdout and can be integrated
 
 ## Plugin System
 
-Create custom block types by placing `.mjs` / `.js` / `.ts` files in a plugins directory.
+Create custom block types as Rust libraries or WASM components.
 
-### Plugin Interface
+### Writing a Plugin (Rust)
 
-```typescript
-// my-custom-block.mjs
-export default {
-  inputs: ["x"],                          // input tensor names
-  outputs: ["y"],                         // output tensor names
-  params: {                               // optional: parameter specs
-    alpha: { type: "number", default: 0.5 }
-  },
-  inferShape(inputs, params) {           // input shapes → output shapes
-    return [[...inputs[0]]];
-  },
-  render(ctx) { },                       // custom SVG rendering (optional)
-  codegen(ctx) { },                      // custom code generation (optional)
-};
+Plugins implement the `BlockPlugin` trait from `mlmd_core::plugin`:
+
+```rust
+use mlmd_core::plugin::{BlockPlugin, PluginRegistry};
+use mlmd_core::types::{Shape, ParamValue};
+
+struct MyCustomBlock;
+
+impl BlockPlugin for MyCustomBlock {
+    fn name(&self) -> &str { "MyCustomBlock" }
+    fn inputs(&self) -> &[&str] { &["x"] }
+    fn outputs(&self) -> &[&str] { &["y"] }
+    fn params(&self) -> Vec<(&str, ParamValue)> {
+        vec![("alpha", ParamValue::Number(0.5))]
+    }
+    fn infer_shape(&self, inputs: &[Shape], _params: &[ParamValue]) -> Vec<Shape> {
+        vec![inputs[0].clone()]
+    }
+}
 ```
+
+### Plugin Discovery
+
+The CLI loads `.wasm` / `.so` / `.dylib` files from the plugins directory specified in `.mlmdrc`.
 
 ### Usage
 
@@ -506,49 +526,48 @@ mlmd lsp --stdio
 
 ---
 
-## Programmatic API
+## Rust API
 
-```typescript
-import {
-  tokenize,
-  parse,
-  buildGraph,
-  inferShapes,
-  getTarget,
-  layout,
-  render,
-  lint,
-  loadConfig,
-  loadPlugins,
-  registerBlock,
-  lookupBlock,
-  topoSort,
-} from "mlmd";
-import "mlmd/blocks";                           // register built-in blocks
+Use `mlmd_core` as a library in your Rust project:
+
+```toml
+[dependencies]
+mlmd-core = { path = "../mlmd-core" }
+mlmd-builtin-plugins = { path = "../mlmd-builtin-plugins" }
+```
+
+```rust
+use mlmd_core::parser::{tokenize, parse};
+use mlmd_core::ast::graph::build_graph;
+use mlmd_core::shape::infer::infer_shapes;
+use mlmd_core::codegen::target::get_target;
+use mlmd_core::visualize::{layout, render_svg};
+use mlmd_core::lint::lint;
+use mlmd_core::config::load_config;
+use mlmd_core::plugin::registry::Registry;
+
+// Register builtin blocks
+mlmd_builtin_plugins::register_all();
+
+// Register codegen targets
+mlmd_core::codegen::targets::register_all_codegen_targets();
 
 // Full pipeline
-const tokens = tokenize(source);
-const { nodes } = parse(tokens);
-const graph = buildGraph(nodes);
-const result = inferShapes(graph, registry);
+let tokens = tokenize(source)?;
+let ast = parse(tokens)?;
+let graph = build_graph(ast.nodes, &ast.groups)?;
+let shaped = infer_shapes(&graph, &Registry::global())?;
 
 // Code generation
-const target = getTarget("pytorch");
-const files = target.generate(result.graph, registry);
+let target = get_target("pytorch")?;
+let files = target.generate(&shaped, &Registry::global());
 
 // Visualization
-const layoutResult = layout(shapedGraph);
-const svg = render(shapedGraph, layoutResult);
+let layout_result = layout(&shaped);
+let svg = render_svg(&shaped, &layout_result);
 
 // Linting
-const diagnostics = lint(graph, registry);
-
-// Custom blocks
-registerBlock({
-  name: "MyBlock",
-  params: [{ name: "alpha", type: "number", default: 0.1 }],
-  inferShape(inputs, params) { return [inputs[0]]; },
-});
+let diagnostics = lint(&graph, &Registry::global());
 ```
 
 ---
@@ -560,52 +579,51 @@ registerBlock({
 ```bash
 git clone https://github.com/Eeveeboo/machine-learning-markdown.git
 cd machine-learning-markdown
-npm install
 ```
 
-### Scripts
+### Cargo Workspace
+
+The project is organized as a Cargo workspace with these crates:
+
+```
+├── mlmd/                   # CLI binary entrypoint
+├── mlmd-core/              # Core library (parser, AST, codegen, config, LSP, etc.)
+├── mlmd-builtin-plugins/   # Built-in block plugin implementations (43 blocks)
+├── mlmd-examples/          # Example generation + validation tests
+├── mlmd-extension-zed/     # Zed editor extension (WASM component)
+└── tests/e2e/rust/         # End-to-end tests (Candle model compilation)
+```
+
+### Scripts (via Makefile)
 
 | Command | Description |
 |---------|-------------|
-| `npm run build` | Compile TypeScript with `tsup` (outputs to `dist/`) |
-| `npm test` | Run all tests with Vitest |
-| `npm run typecheck` | Type-check all source files with `tsc --noEmit` |
-| `npm run dev` | Watch mode — rebuild on file changes |
-
-### Project Structure
-
-```
-├── src/                   # TypeScript source
-│   ├── ast/               # AST node types & graph IR
-│   ├── blocks/            # Block registry & type definitions
-│   ├── cli/               # Commander CLI setup + commands
-│   ├── codegen/           # Code generation backends (pytorch, keras, candle)
-│   ├── config/            # .mlmdrc config loader
-│   ├── lint/              # Lint rules & orchestrator
-│   ├── lsp/               # LSP server
-│   ├── parser/            # Tokenizer, parser, graph builder
-│   ├── plugins/           # Plugin system & built-in blocks (43 blocks)
-│   ├── shape/             # Shape inference engine
-│   ├── visualize/         # Layout + SVG rendering
-│   └── index.ts           # Public API barrel exports
-├── bin/mlmd.ts            # CLI entry point
-├── grammars/mlmd-grammar/ # Tree-sitter grammar package (source)
-├── grammars/mlmd.wasm     # Pre-built grammar WASM
-├── syntaxes/              # TextMate grammar for syntax highlighting
-├── languages/mlmd/        # Editor configs (VS Code, legacy Zed)
-├── mlmd-vscode/           # VS Code extension
-├── zed-mlmd/              # Zed editor extension
-├── examples/              # Example .mlmd files + generated outputs
-└── tests/                 # Test suite (27 test files, 298+ tests)
-```
+| `make build` | Build all workspace crates (`cargo build --workspace`) |
+| `make test` | Run all tests (`cargo test --workspace`) |
+| `make lint` | Lint with clippy (`cargo clippy --workspace`) |
+| `make fmt` | Check formatting (`cargo fmt --check`) |
+| `make check` | Type-check without codegen (`cargo check --workspace`) |
+| `make generate-examples` | Regenerate all example outputs |
+| `make clean` | Clean build artifacts (`cargo clean`) |
 
 ### Testing
 
 ```bash
-npm test                              # run all tests
-npx vitest run                         # same as above
-npx vitest run tests/lint/lint.test.ts   # single test file
-npx vitest --watch                     # watch mode
+cargo test --workspace              # run all tests
+cargo test -p mlmd-core             # test core library only
+cargo test -p mlmd-builtin-plugins  # test built-in blocks
+cargo test -p mlmd-examples         # regenerate + validate examples
+cargo test                          # run tests for the root `mlmd` binary
+cargo test -- --test-threads=1      # sequential (useful for shared resources)
+```
+
+### Running the CLI without Installing
+
+```bash
+cargo run -p mlmd -- visualize examples/lenet.mlmd -o lenet.svg
+cargo run -p mlmd -- generate examples/lenet.mlmd -t pytorch -o ./out
+cargo run -p mlmd -- lint examples/lenet.mlmd
+cargo run -p mlmd -- lsp
 ```
 
 ### Building the Tree-Sitter Grammar
@@ -619,7 +637,17 @@ npm exec tree-sitter generate
 ### Regenerating Example Outputs
 
 ```bash
-./generate-examples.sh
+make generate-examples
+```
+
+Or directly:
+
+```bash
+cargo run -p mlmd -- generate examples/lenet.mlmd -t pytorch -o examples
+cargo run -p mlmd -- generate examples/lenet.mlmd -t candle -o examples
+cargo run -p mlmd -- visualize examples/lenet.mlmd -o examples/lenet.svg
+# ... repeat for all example files
 ```
 
 ---
+

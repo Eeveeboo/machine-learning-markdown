@@ -11,19 +11,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          node-version: "20"
-          registry-url: "https://registry.npmjs.org"
+          toolchain: stable
+          cache: true
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Build release
+        run: cargo build --release -p mlmd
 
-      - name: Build
-        run: npm run build
-
-      - name: Publish
-        run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mlmd-${{ runner.os }}
+          path: target/release/mlmd

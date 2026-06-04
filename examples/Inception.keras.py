@@ -1,0 +1,22 @@
+import tensorflow as tf
+from tensorflow import keras
+
+
+def build_model():
+    b4 = keras.Input(shape=(28, 28,))  # [192, 28, 28]
+    x = keras.layers.Conv2D(64, 1, strides=1, padding='valid')(b4)  # [64, 28, 28]
+    out1 = keras.layers.ReLU()(x)  # [64, 28, 28]
+    x = keras.layers.Conv2D(96, 1, strides=1, padding='valid')(b4)  # [96, 28, 28]
+    x = keras.layers.ReLU()(x)  # [96, 28, 28]
+    x = keras.layers.Conv2D(128, 3, strides=1, padding='same')(x)  # [128, 28, 28]
+    out2 = keras.layers.ReLU()(x)  # [128, 28, 28]
+    x = keras.layers.Conv2D(16, 1, strides=1, padding='valid')(b4)  # [16, 28, 28]
+    x = keras.layers.ReLU()(x)  # [16, 28, 28]
+    x = keras.layers.Conv2D(32, 5, strides=1, padding='same')(x)  # [32, 28, 28]
+    out3 = keras.layers.ReLU()(x)  # [32, 28, 28]
+    x = keras.layers.MaxPooling2D(pool_size=3, strides=1)(b4)  # [192, 28, 28]
+    x = keras.layers.Conv2D(32, 1, strides=1, padding='valid')(x)  # [32, 28, 28]
+    out4 = keras.layers.ReLU()(x)  # [32, 28, 28]
+    x = keras.layers.Concatenate(axis=0)([out1, out2, out3, out4])  # [256, 28, 28]
+    # output  # [256, 28, 28]
+    return keras.Model(inputs=b4, outputs=x)
