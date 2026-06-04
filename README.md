@@ -590,8 +590,7 @@ The project is organized as a Cargo workspace with these crates:
 ├── mlmd-core/              # Core library (parser, AST, codegen, config, LSP, etc.)
 ├── mlmd-builtin-plugins/   # Built-in block plugin implementations (43 blocks)
 ├── mlmd-examples/          # Example generation + validation tests
-├── mlmd-extension-zed/     # Zed editor extension (WASM component)
-└── tests/e2e/rust/         # End-to-end tests (Candle model compilation)
+└── mlmd-extension-zed/     # Zed editor extension (WASM component)
 ```
 
 ### Scripts (via Makefile)
