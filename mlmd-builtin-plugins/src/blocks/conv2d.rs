@@ -90,7 +90,7 @@ impl BlockDef for Conv2dBlockDef {
     }
 
     fn show_depth(&self) -> bool {
-        false
+        true
     }
 }
 

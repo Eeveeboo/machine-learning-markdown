@@ -1,78 +1,78 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 1208" width="440" height="1208">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 1008" width="440" height="1008">
 <defs>
   <marker id="arrowhead" markerWidth="7" markerHeight="5" refX="7" refY="2.5" markerUnits="userSpaceOnUse" orient="auto">
     <polygon points="0 0, 7 2.5, 0 5" fill="#94a3b8" />
   </marker>
 </defs>
-<rect x="30" y="12" width="380" height="1142" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6,4" rx="8" />
-<text x="38" y="26" font-size="11" fill="#64748b" font-family="sans-serif" font-weight="500">LeNet5</text>
-<rect x="177.625754527163" y="40" width="84.74849094567404" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
-<text x="220" y="54" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">Input shape=(1,28,28)</text>
-<text x="220" y="64" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(1,28,28)</text>
-<rect x="180.04024144869214" y="92" width="79.91951710261569" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
-<text x="220" y="106" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">Conv2d f=6 k=5</text>
-<text x="220" y="116" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(6,24,24)</text>
+<rect x="30" y="12" width="380" height="942" fill="none" rx="8" stroke="#94a3b8" stroke-dasharray="6,4" stroke-width="1.5" />
+<text x="38" y="26" fill="#64748b" font-family="sans-serif" font-size="11" font-weight="500">LeNet5</text>
 <rect x="180.04024144869214" y="144" width="79.91951710261569" height="28" rx="8" ry="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2" />
-<text x="220" y="158" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">ReLU</text>
-<text x="220" y="168" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(6,24,24)</text>
-<rect x="187.2837022132797" y="196" width="65.43259557344064" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
-<text x="220" y="210" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">MaxPool k=2 s=2</text>
-<text x="220" y="220" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(6,12,12)</text>
+<text x="220" y="158" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">ReLU</text>
+<text x="220" y="168" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(6,24,24)</text>
+<rect x="143.82293762575455" y="760" width="152.35412474849093" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="220" y="774" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Linear out=84</text>
+<text x="220" y="784" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(84)</text>
+<rect x="122.09255533199196" y="708" width="195.81488933601608" height="28" rx="8" ry="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2" />
+<text x="220" y="722" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">ReLU</text>
+<text x="220" y="732" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(120)</text>
+<rect x="177.625754527163" y="40" width="84.74849094567404" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="220" y="54" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Input shape=(1,28,28)</text>
+<text x="220" y="64" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(1,28,28)</text>
 <rect x="189.69818913480884" y="248" width="60.603621730382294" height="228" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
-<text x="220" y="262" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">Conv2d f=16 k=5</text>
-<text x="220" y="472" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(16,8,8)</text>
+<text x="220" y="262" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Conv2d k=5 f=16</text>
+<text x="220" y="472" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(16,8,8)</text>
+<rect x="143.82293762575455" y="812" width="152.35412474849093" height="28" rx="8" ry="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2" />
+<text x="220" y="826" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">ReLU</text>
+<text x="220" y="836" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(84)</text>
+<rect x="190" y="552" width="60" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="220" y="566" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">MaxPool k=2 s=2</text>
+<text x="220" y="576" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(16,4,4)</text>
 <rect x="189.69818913480884" y="500" width="60.603621730382294" height="28" rx="8" ry="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2" />
-<text x="220" y="514" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">ReLU</text>
-<text x="220" y="524" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(16,8,8)</text>
-<rect x="190" y="552" width="60" height="228" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
-<text x="220" y="566" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">MaxPool k=2 s=2</text>
-<text x="220" y="776" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(16,4,4)</text>
-<rect x="40" y="804" width="360" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
-<text x="220" y="818" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">Flatten</text>
-<text x="220" y="828" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(256)</text>
-<rect x="122.09255533199196" y="856" width="195.81488933601608" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
-<text x="220" y="870" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">Linear out=120</text>
-<text x="220" y="880" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(120)</text>
-<rect x="122.09255533199196" y="908" width="195.81488933601608" height="28" rx="8" ry="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2" />
-<text x="220" y="922" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">ReLU</text>
-<text x="220" y="932" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(120)</text>
-<rect x="143.82293762575455" y="960" width="152.35412474849093" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
-<text x="220" y="974" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">Linear out=84</text>
-<text x="220" y="984" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(84)</text>
-<rect x="143.82293762575455" y="1012" width="152.35412474849093" height="28" rx="8" ry="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2" />
-<text x="220" y="1026" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">ReLU</text>
-<text x="220" y="1036" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(84)</text>
-<rect x="188.49094567404427" y="1064" width="63.01810865191147" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
-<text x="220" y="1078" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">Linear out=10</text>
-<text x="220" y="1088" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(10)</text>
-<rect x="188.49094567404427" y="1116" width="63.01810865191147" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
-<text x="220" y="1130" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">Output</text>
-<text x="220" y="1140" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(10)</text>
-<path d="M 220 68 L 220 92" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
-<text x="224" y="84" font-size="8" fill="#94a3b8" font-family="monospace">(1,28,28)</text>
-<path d="M 220 120 L 220 144" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
-<text x="224" y="136" font-size="8" fill="#94a3b8" font-family="monospace">(6,24,24)</text>
-<path d="M 220 172 L 220 196" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
-<text x="224" y="188" font-size="8" fill="#94a3b8" font-family="monospace">(6,24,24)</text>
-<path d="M 220 224 L 220 248" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
-<text x="224" y="240" font-size="8" fill="#94a3b8" font-family="monospace">(6,12,12)</text>
-<path d="M 220 476 L 220 500" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
-<text x="224" y="492" font-size="8" fill="#94a3b8" font-family="monospace">(16,8,8)</text>
-<path d="M 220 528 L 220 552" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
-<text x="224" y="544" font-size="8" fill="#94a3b8" font-family="monospace">(16,8,8)</text>
-<path d="M 220 780 L 220 804" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
-<text x="224" y="796" font-size="8" fill="#94a3b8" font-family="monospace">(16,4,4)</text>
-<path d="M 220 832 L 220 856" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
-<text x="224" y="848" font-size="8" fill="#94a3b8" font-family="monospace">(256)</text>
-<path d="M 220 884 L 220 908" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
-<text x="224" y="900" font-size="8" fill="#94a3b8" font-family="monospace">(120)</text>
-<path d="M 220 936 L 220 960" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
-<text x="224" y="952" font-size="8" fill="#94a3b8" font-family="monospace">(120)</text>
-<path d="M 220 988 L 220 1012" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
-<text x="224" y="1004" font-size="8" fill="#94a3b8" font-family="monospace">(84)</text>
-<path d="M 220 1040 L 220 1064" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
-<text x="224" y="1056" font-size="8" fill="#94a3b8" font-family="monospace">(84)</text>
-<path d="M 220 1092 L 220 1116" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
-<text x="224" y="1108" font-size="8" fill="#94a3b8" font-family="monospace">(10)</text>
-<text x="430" y="1202" text-anchor="end" font-size="10" fill="#94a3b8" font-family="sans-serif">Total params: 44.4K</text>
+<text x="220" y="514" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">ReLU</text>
+<text x="220" y="524" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(16,8,8)</text>
+<rect x="180.04024144869214" y="92" width="79.91951710261569" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="220" y="106" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Conv2d f=6 k=5</text>
+<text x="220" y="116" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(6,24,24)</text>
+<rect x="122.09255533199196" y="656" width="195.81488933601608" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="220" y="670" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Linear out=120</text>
+<text x="220" y="680" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(120)</text>
+<rect x="188.49094567404427" y="864" width="63.01810865191147" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="220" y="878" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Linear out=10</text>
+<text x="220" y="888" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(10)</text>
+<rect x="188.49094567404427" y="916" width="63.01810865191147" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="220" y="930" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Output</text>
+<text x="220" y="940" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(10)</text>
+<rect x="187.2837022132797" y="196" width="65.43259557344064" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="220" y="210" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">MaxPool k=2 s=2</text>
+<text x="220" y="220" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(6,12,12)</text>
+<rect x="40" y="604" width="360" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="220" y="618" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Flatten</text>
+<text x="220" y="628" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(256)</text>
+<path d="M 220 68 L 220 92" fill="none" marker-end="url(#arrowhead)" stroke="#64748b" stroke-width="1.5" />
+<text x="224" y="84" fill="#94a3b8" font-family="monospace" font-size="8">(1,28,28)</text>
+<path d="M 220 120 L 220 144" fill="none" marker-end="url(#arrowhead)" stroke="#64748b" stroke-width="1.5" />
+<text x="224" y="136" fill="#94a3b8" font-family="monospace" font-size="8">(6,24,24)</text>
+<path d="M 220 172 L 220 196" fill="none" marker-end="url(#arrowhead)" stroke="#64748b" stroke-width="1.5" />
+<text x="224" y="188" fill="#94a3b8" font-family="monospace" font-size="8">(6,24,24)</text>
+<path d="M 220 224 L 220 248" fill="none" marker-end="url(#arrowhead)" stroke="#64748b" stroke-width="1.5" />
+<text x="224" y="240" fill="#94a3b8" font-family="monospace" font-size="8">(6,12,12)</text>
+<path d="M 220 476 L 220 500" fill="none" marker-end="url(#arrowhead)" stroke="#64748b" stroke-width="1.5" />
+<text x="224" y="492" fill="#94a3b8" font-family="monospace" font-size="8">(16,8,8)</text>
+<path d="M 220 528 L 220 552" fill="none" marker-end="url(#arrowhead)" stroke="#64748b" stroke-width="1.5" />
+<text x="224" y="544" fill="#94a3b8" font-family="monospace" font-size="8">(16,8,8)</text>
+<path d="M 220 580 L 220 604" fill="none" marker-end="url(#arrowhead)" stroke="#64748b" stroke-width="1.5" />
+<text x="224" y="596" fill="#94a3b8" font-family="monospace" font-size="8">(16,4,4)</text>
+<path d="M 220 632 L 220 656" fill="none" marker-end="url(#arrowhead)" stroke="#64748b" stroke-width="1.5" />
+<text x="224" y="648" fill="#94a3b8" font-family="monospace" font-size="8">(256)</text>
+<path d="M 220 684 L 220 708" fill="none" marker-end="url(#arrowhead)" stroke="#64748b" stroke-width="1.5" />
+<text x="224" y="700" fill="#94a3b8" font-family="monospace" font-size="8">(120)</text>
+<path d="M 220 736 L 220 760" fill="none" marker-end="url(#arrowhead)" stroke="#64748b" stroke-width="1.5" />
+<text x="224" y="752" fill="#94a3b8" font-family="monospace" font-size="8">(120)</text>
+<path d="M 220 788 L 220 812" fill="none" marker-end="url(#arrowhead)" stroke="#64748b" stroke-width="1.5" />
+<text x="224" y="804" fill="#94a3b8" font-family="monospace" font-size="8">(84)</text>
+<path d="M 220 840 L 220 864" fill="none" marker-end="url(#arrowhead)" stroke="#64748b" stroke-width="1.5" />
+<text x="224" y="856" fill="#94a3b8" font-family="monospace" font-size="8">(84)</text>
+<path d="M 220 892 L 220 916" fill="none" marker-end="url(#arrowhead)" stroke="#64748b" stroke-width="1.5" />
+<text x="224" y="908" fill="#94a3b8" font-family="monospace" font-size="8">(10)</text>
+<text x="430" y="1002" fill="#94a3b8" font-family="sans-serif" font-size="10" text-anchor="end">Total params: 44.4K</text>
 </svg>

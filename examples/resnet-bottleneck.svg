@@ -1,80 +1,80 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1016 2048" width="1016" height="2048">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1016 1176" width="1016" height="1176">
 <defs>
   <marker id="arrowhead" markerWidth="7" markerHeight="5" refX="7" refY="2.5" markerUnits="userSpaceOnUse" orient="auto">
     <polygon points="0 0, 7 2.5, 0 5" fill="#94a3b8" />
   </marker>
 </defs>
-<rect x="30" y="12" width="750" height="1982" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6,4" rx="8" />
-<text x="38" y="26" font-size="11" fill="#64748b" font-family="sans-serif" font-weight="500">ResNet50 / Bottleneck</text>
-<rect x="225" y="40" width="360" height="228" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
-<text x="405" y="54" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">Input shape=(256,56,56)</text>
-<text x="405" y="264" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(256,56,56)</text>
-<rect x="40" y="356" width="360" height="100" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
-<text x="220" y="370" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">Conv2d f=64 k=1</text>
-<text x="220" y="452" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(64,56,56)</text>
-<rect x="410" y="292" width="360" height="228" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
-<text x="590" y="306" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">Conv2d f=256 k=1</text>
-<text x="590" y="516" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(256,56,56)</text>
-<rect x="40" y="608" width="360" height="100" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
-<text x="220" y="622" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">BatchNorm</text>
-<text x="220" y="704" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(64,56,56)</text>
-<rect x="410" y="544" width="360" height="228" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
-<text x="590" y="558" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">BatchNorm</text>
-<text x="590" y="768" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(256,56,56)</text>
-<rect x="225" y="796" width="360" height="28" rx="8" ry="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2" />
-<text x="405" y="810" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">ReLU</text>
-<text x="405" y="820" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(64,56,56)</text>
-<rect x="225" y="848" width="360" height="100" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
-<text x="405" y="862" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">Conv2d f=64 k=3 p=1</text>
-<text x="405" y="944" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(64,56,56)</text>
-<rect x="225" y="972" width="360" height="100" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
-<text x="405" y="986" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">BatchNorm</text>
-<text x="405" y="1068" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(64,56,56)</text>
-<rect x="225" y="1096" width="360" height="28" rx="8" ry="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2" />
-<text x="405" y="1110" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">ReLU</text>
-<text x="405" y="1120" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(64,56,56)</text>
-<rect x="225" y="1148" width="360" height="228" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
-<text x="405" y="1162" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">Conv2d f=256 k=1</text>
-<text x="405" y="1372" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(256,56,56)</text>
-<rect x="225" y="1400" width="360" height="228" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
-<text x="405" y="1414" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">BatchNorm</text>
-<text x="405" y="1624" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(256,56,56)</text>
-<rect x="225" y="1652" width="360" height="28" rx="8" ry="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" />
-<text x="405" y="1666" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">Add</text>
-<text x="405" y="1676" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(256,56,56)</text>
-<rect x="225" y="1704" width="360" height="28" rx="8" ry="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2" />
-<text x="405" y="1718" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">ReLU</text>
-<text x="405" y="1728" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(256,56,56)</text>
-<rect x="225" y="1756" width="360" height="228" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
-<text x="405" y="1770" text-anchor="middle" font-size="11" fill="#1e293b" font-family="sans-serif" font-weight="500">Output</text>
-<text x="405" y="1980" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">(256,56,56)</text>
-<path d="M 315 268 L 315 312 L 220 312 L 220 356" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
-<text x="271.5" y="316" font-size="8" fill="#94a3b8" font-family="monospace">main (256,56,56)</text>
-<path d="M 220 456 L 220 608" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
-<text x="224" y="536" font-size="8" fill="#94a3b8" font-family="monospace">(64,56,56)</text>
-<path d="M 220 708 L 220 752 L 405 752 L 405 796" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
-<text x="316.5" y="756" font-size="8" fill="#94a3b8" font-family="monospace">(64,56,56)</text>
-<path d="M 405 824 L 405 848" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
-<text x="409" y="840" font-size="8" fill="#94a3b8" font-family="monospace">(64,56,56)</text>
-<path d="M 405 948 L 405 972" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
-<text x="409" y="964" font-size="8" fill="#94a3b8" font-family="monospace">(64,56,56)</text>
-<path d="M 405 1072 L 405 1096" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
-<text x="409" y="1088" font-size="8" fill="#94a3b8" font-family="monospace">(64,56,56)</text>
-<path d="M 405 1124 L 405 1148" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
-<text x="409" y="1140" font-size="8" fill="#94a3b8" font-family="monospace">(64,56,56)</text>
-<path d="M 405 1376 L 405 1400" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
-<text x="409" y="1392" font-size="8" fill="#94a3b8" font-family="monospace">(256,56,56)</text>
-<path d="M 495 268 L 495 280 L 590 280 L 590 292" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
-<text x="546.5" y="284" font-size="8" fill="#94a3b8" font-family="monospace">skip (256,56,56)</text>
-<path d="M 590 520 L 590 544" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
-<text x="594" y="536" font-size="8" fill="#94a3b8" font-family="monospace">(256,56,56)</text>
-<path d="M 405 1628 L 405 1652" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
-<text x="409" y="1644" font-size="8" fill="#94a3b8" font-family="monospace">main_out (256,56,56)</text>
-<path d="M 770 658 C 976 658, 791 1666, 585 1666" stroke="#9333ea" stroke-width="1.5" fill="none" stroke-dasharray="5,3" marker-end="url(#arrowhead)" />
-<text x="778" y="646" font-size="9" fill="#9333ea" text-anchor="start" font-family="monospace">→ skip_out (256,56,56)</text>
-<path d="M 405 1680 L 405 1704" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
-<text x="409" y="1696" font-size="8" fill="#94a3b8" font-family="monospace">(256,56,56)</text>
-<path d="M 405 1732 L 405 1756" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" />
-<text x="409" y="1748" font-size="8" fill="#94a3b8" font-family="monospace">(256,56,56)</text>
-<text x="800" y="2042" text-anchor="end" font-size="10" fill="#94a3b8" font-family="sans-serif">Total params: 137.1K</text>
+<rect x="30" y="12" width="750" height="1110" fill="none" rx="8" stroke="#94a3b8" stroke-dasharray="6,4" stroke-width="1.5" />
+<text x="38" y="26" fill="#64748b" font-family="sans-serif" font-size="11" font-weight="500">ResNet50 / Bottleneck</text>
+<rect x="225" y="572" width="360" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="405" y="586" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">BatchNorm</text>
+<text x="405" y="596" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(64,56,56)</text>
+<rect x="410" y="344" width="360" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="590" y="358" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">BatchNorm</text>
+<text x="590" y="368" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(256,56,56)</text>
+<rect x="225" y="448" width="360" height="100" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="405" y="462" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Conv2d f=64 k=3 p=1</text>
+<text x="405" y="544" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(64,56,56)</text>
+<rect x="225" y="928" width="360" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="405" y="942" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">BatchNorm</text>
+<text x="405" y="952" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(256,56,56)</text>
+<rect x="225" y="980" width="360" height="28" rx="8" ry="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" />
+<text x="405" y="994" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Add</text>
+<text x="405" y="1004" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(256,56,56)</text>
+<rect x="225" y="396" width="360" height="28" rx="8" ry="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2" />
+<text x="405" y="410" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">ReLU</text>
+<text x="405" y="420" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(64,56,56)</text>
+<rect x="40" y="344" width="360" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="220" y="358" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">BatchNorm</text>
+<text x="220" y="368" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(64,56,56)</text>
+<rect x="410" y="92" width="360" height="228" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="590" y="106" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Conv2d f=256 k=1</text>
+<text x="590" y="316" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(256,56,56)</text>
+<rect x="225" y="676" width="360" height="228" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="405" y="690" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Conv2d f=256 k=1</text>
+<text x="405" y="900" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(256,56,56)</text>
+<rect x="40" y="156" width="360" height="100" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="220" y="170" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Conv2d k=1 f=64</text>
+<text x="220" y="252" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(64,56,56)</text>
+<rect x="225" y="624" width="360" height="28" rx="8" ry="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2" />
+<text x="405" y="638" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">ReLU</text>
+<text x="405" y="648" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(64,56,56)</text>
+<rect x="225" y="1032" width="360" height="28" rx="8" ry="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2" />
+<text x="405" y="1046" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">ReLU</text>
+<text x="405" y="1056" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(256,56,56)</text>
+<rect x="225" y="1084" width="360" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="405" y="1098" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Output</text>
+<text x="405" y="1108" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(256,56,56)</text>
+<rect x="225" y="40" width="360" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="405" y="54" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Input shape=(256,56,56)</text>
+<text x="405" y="64" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(256,56,56)</text>
+<path d="M 315 68 L 315 112 L 220 112 L 220 156" fill="none" marker-end="url(#arrowhead)" stroke="#64748b" stroke-width="1.5" />
+<text x="271.5" y="116" fill="#94a3b8" font-family="monospace" font-size="8">main (256,56,56)</text>
+<path d="M 220 256 L 220 344" fill="none" marker-end="url(#arrowhead)" stroke="#64748b" stroke-width="1.5" />
+<text x="224" y="304" fill="#94a3b8" font-family="monospace" font-size="8">(64,56,56)</text>
+<path d="M 220 372 L 220 384 L 405 384 L 405 396" fill="none" marker-end="url(#arrowhead)" stroke="#64748b" stroke-width="1.5" />
+<text x="316.5" y="388" fill="#94a3b8" font-family="monospace" font-size="8">(64,56,56)</text>
+<path d="M 405 424 L 405 448" fill="none" marker-end="url(#arrowhead)" stroke="#64748b" stroke-width="1.5" />
+<text x="409" y="440" fill="#94a3b8" font-family="monospace" font-size="8">(64,56,56)</text>
+<path d="M 405 548 L 405 572" fill="none" marker-end="url(#arrowhead)" stroke="#64748b" stroke-width="1.5" />
+<text x="409" y="564" fill="#94a3b8" font-family="monospace" font-size="8">(64,56,56)</text>
+<path d="M 405 600 L 405 624" fill="none" marker-end="url(#arrowhead)" stroke="#64748b" stroke-width="1.5" />
+<text x="409" y="616" fill="#94a3b8" font-family="monospace" font-size="8">(64,56,56)</text>
+<path d="M 405 652 L 405 676" fill="none" marker-end="url(#arrowhead)" stroke="#64748b" stroke-width="1.5" />
+<text x="409" y="668" fill="#94a3b8" font-family="monospace" font-size="8">(64,56,56)</text>
+<path d="M 405 904 L 405 928" fill="none" marker-end="url(#arrowhead)" stroke="#64748b" stroke-width="1.5" />
+<text x="409" y="920" fill="#94a3b8" font-family="monospace" font-size="8">(256,56,56)</text>
+<path d="M 495 68 L 495 80 L 590 80 L 590 92" fill="none" marker-end="url(#arrowhead)" stroke="#64748b" stroke-width="1.5" />
+<text x="546.5" y="84" fill="#94a3b8" font-family="monospace" font-size="8">skip (256,56,56)</text>
+<path d="M 590 320 L 590 344" fill="none" marker-end="url(#arrowhead)" stroke="#64748b" stroke-width="1.5" />
+<text x="594" y="336" fill="#94a3b8" font-family="monospace" font-size="8">(256,56,56)</text>
+<path d="M 405 956 L 405 980" fill="none" marker-end="url(#arrowhead)" stroke="#64748b" stroke-width="1.5" />
+<text x="409" y="972" fill="#94a3b8" font-family="monospace" font-size="8">main_out (256,56,56)</text>
+<path d="M 770 358 C 976 358, 791 994, 585 994" fill="none" marker-end="url(#arrowhead)" stroke="#9333ea" stroke-dasharray="5,3" stroke-width="1.5" />
+<text x="778" y="346" fill="#9333ea" font-family="monospace" font-size="9" text-anchor="start">→ skip_out (256,56,56)</text>
+<path d="M 405 1008 L 405 1032" fill="none" marker-end="url(#arrowhead)" stroke="#64748b" stroke-width="1.5" />
+<text x="409" y="1024" fill="#94a3b8" font-family="monospace" font-size="8">(256,56,56)</text>
+<path d="M 405 1060 L 405 1084" fill="none" marker-end="url(#arrowhead)" stroke="#64748b" stroke-width="1.5" />
+<text x="409" y="1076" fill="#94a3b8" font-family="monospace" font-size="8">(256,56,56)</text>
+<text x="800" y="1170" fill="#94a3b8" font-family="sans-serif" font-size="10" text-anchor="end">Total params: 137.1K</text>
 </svg>

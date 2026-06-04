@@ -64,7 +64,7 @@ impl BlockDef for LinearBlockDef {
     }
 
     fn show_depth(&self) -> bool {
-        false
+        true
     }
 }
 

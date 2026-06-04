@@ -1,7 +1,7 @@
 CARGO ?= cargo
-MLMD ?= cargo run -p mlmd --
+MLMD_RELEASE ?= target/release/mlmd
 
-.PHONY: help build test test-examples test-rust-examples install install-zed \
+.PHONY: help build build-release test test-python-examples test-rust-examples install install-zed \
         install-vscode lint fmt clean examples generate-examples check
 
 help:  ## Show this help
@@ -11,25 +11,27 @@ build:  ## Build the workspace (all crates)
 	@echo "Building workspace..."
 	$(CARGO) build --workspace
 
-test: test-examples test-rust-examples  ## Run all tests (Rust + Python examples)
+test: test-python-examples test-rust-examples  ## Run all tests (Rust + Python examples)
 	@echo "Running tests..."
 	$(CARGO) test --workspace
 
-test-examples:  ## Run Python example tests
+test-python-examples:  ## Run Python example tests
 	cd examples && uv sync && uv run pytest -v
 
 test-rust-examples:  ## Run Rust example tests
 	$(CARGO) test -p mlmd-examples
 
-install:  ## Build release binary and install to /usr/local/bin
+build-release:  ## Build release binary
 	$(CARGO) build --release -p mlmd
-	cp target/release/mlmd /usr/local/bin/
 
-install-zed:  ## Install mlmd Zed extension
-	$(MLMD) install zed
+install:  ## Build release binary and install to ~/.cargo/bin
+	cargo install --path mlmd
 
-install-vscode:  ## Install mlmd VS Code extension
-	$(MLMD) install vscode
+install-zed: build-release  ## Install mlmd Zed extension
+	$(MLMD_RELEASE) install zed
+
+install-vscode: build-release  ## Install mlmd VS Code extension
+	$(MLMD_RELEASE) install vscode
 
 lint:  ## Run clippy linting on the workspace
 	$(CARGO) clippy --workspace -- -D warnings 2>/dev/null || $(CARGO) clippy --workspace
@@ -45,12 +47,13 @@ examples: generate-examples  ## Generate and run all examples
 	$(CARGO) test -p mlmd-examples
 	cd examples && uv run pytest -v
 
-generate-examples:  ## Generate output from all .mlmd example files
+generate-examples: build-release  ## Generate output from all .mlmd example files
 	for f in examples/*.mlmd; do \
 		echo "Generating from $$f..."; \
-		$(MLMD) generate -t pytorch -o examples "$$f"; \
-		$(MLMD) generate -t candle -o examples "$$f"; \
-		$(MLMD) generate -t keras -o examples "$$f"; \
+		$(MLMD_RELEASE) generate -t pytorch -o examples "$$f"; \
+		$(MLMD_RELEASE) generate -t candle -o examples "$$f"; \
+		$(MLMD_RELEASE) generate -t keras -o examples "$$f"; \
+		$(MLMD_RELEASE) visualize "$$f" -o "examples/$$(basename "$$f" .mlmd).svg"; \
 	done
 
 check:  ## Run cargo check on the workspace (quick compile check)
