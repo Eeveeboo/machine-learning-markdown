@@ -9,7 +9,7 @@ help:  ## Show this help
 
 build:  ## Build the workspace (all crates)
 	@echo "Building workspace..."
-	$(CARGO) build --workspace
+	$(CARGO) build --release --workspace
 
 test: test-python-examples test-rust-examples  ## Run all tests (Rust + Python examples)
 	@echo "Running tests..."
