@@ -219,10 +219,17 @@ mlmd install zed                                   # prepare Zed dev extension
 
 Manage external plugins.
 
+| Subcommand | Description |
+|------------|-------------|
+| `list` | List all registered blocks with I/O signatures and parameters |
+| `new <block_name>` | Create a single-file plugin scaffold (`<snake_name>.rs`) |
+| `init <plugin_name>` | Bootstrap a full plugin project with Cargo.toml + registration |
+
 ```bash
-mlmd plugin list                                   # list installed plugins
-mlmd plugin install <path>                         # install a plugin from path
-mlmd plugin info <name>                            # show plugin details
+mlmd plugin list                                   # list available blocks
+mlmd plugin new MyCustomLayer                      # scaffold a single-file plugin
+mlmd plugin init my-plugin                         # bootstrap full plugin project
+mlmd plugin init my-plugin --block-name MyLayer    # with custom block name
 ```
 
 ---
@@ -233,7 +240,7 @@ Create a `.mlmdrc` JSON file in your project root for shared defaults:
 
 ```json
 {
-  "plugins": "./mlmd-plugins",
+  "plugins": "target/debug/libmy_plugin.dylib",
   "targets": [
     { "lang": "pytorch", "out": "./generated" },
     { "lang": "keras", "out": "./generated" },
@@ -244,7 +251,7 @@ Create a `.mlmdrc` JSON file in your project root for shared defaults:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `plugins` | `string` | Path to a directory of custom block plugins (WASM components) |
+| `plugins` | `string` | Path to a dynamic plugin `.so`/`.dylib` file |
 | `targets` | `array` | List of default code generation targets |
 
 When no `-t`/`--target` is passed, `mlmd generate` uses the targets from `.mlmdrc`.
@@ -461,48 +468,226 @@ The LSP server (`mlmd lsp`) communicates over stdin/stdout and can be integrated
 
 ## Plugin System
 
-Create custom block types as Rust libraries or WASM components.
+MLMD supports custom block types via a Rust plugin system. Plugins are
+implemented as Rust `cdylib` libraries that register themselves at load time.
 
-### Writing a Plugin (Rust)
+### Architecture
 
-Plugins implement the `BlockPlugin` trait from `mlmd_core::plugin`:
+A plugin consists of:
+
+1. **A unit struct** that implements the `Plugin` trait from `mlmd-plugin-api`
+2. **`register_plugin!`** — a proc-macro that generates a `BlockDef` adapter and
+   three codegen dispatch functions (pytorch / keras / candle), then wires them
+   into the global registries
+3. **`export_plugin!`** — a proc-macro that generates the `MLMD_PLUGIN` C-ABI
+   symbol for dynamic loading via `libloading`
+
+When the CLI starts, it:
+
+1. Registers all 44 builtin blocks (`mlmd_builtin_plugins::register_all()`)
+2. Loads `.mlmdrc` and calls `libloading::Library::new()` on the plugin path
+3. Discovers the `MLMD_PLUGIN` symbol, calls it to get a `PluginFFI` function
+   table, then registers that plugin's block with the shape inference system
+
+Once registered, the custom block is indistinguishable from builtins — it
+participates in shape inference, SVG rendering, and code generation for all
+three targets.
+
+### Quick Start — `mlmd plugin init`
+
+The easiest way to create a new plugin:
+
+```bash
+# Bootstrap a plugin project
+mlmd plugin init my-plugin
+
+# Output:
+#   Created my-plugin/Cargo.toml
+#   Created my-plugin/src/lib.rs
+#   Updated .mlmdrc
+#   Next steps:
+#     cd my-plugin && cargo build
+#     Then use "MyPlugin" in your .mlmd files
+```
+
+This creates a complete plugin project with:
+
+- `Cargo.toml` — `crate-type = ["lib", "cdylib"]` + dependencies on
+  `mlmd-core` and `mlmd-plugin-api`
+- `src/lib.rs` — a scaffold implementing the `Plugin` trait with stub
+  shape inference and codegen for all three targets
+- `.mlmdrc` — updated with the path to the built `.dylib`/`.so`
+
+The block name is auto-derived from the plugin name via `kebab-to-pascal`
+(e.g. `my-plugin` → `MyPlugin`). Override with `--block-name`:
+
+```bash
+mlmd plugin init my-plugin --block-name CustomLayer
+```
+
+### Manual Plugin Project
+
+A minimal plugin looks like this:
+
+**`Cargo.toml`**
+
+```toml
+[package]
+name = "my-plugin"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["lib", "cdylib"]
+
+[dependencies]
+mlmd-core = { path = "../mlmd-core" }
+mlmd-plugin-api = { path = "../mlmd-plugin-api" }
+```
+
+**`src/lib.rs`**
 
 ```rust
-use mlmd_core::plugin::{BlockPlugin, PluginRegistry};
-use mlmd_core::types::{Shape, ParamValue};
+use mlmd_plugin_api::*;
 
-struct MyCustomBlock;
+struct Scale;
 
-impl BlockPlugin for MyCustomBlock {
-    fn name(&self) -> &str { "MyCustomBlock" }
-    fn inputs(&self) -> &[&str] { &["x"] }
-    fn outputs(&self) -> &[&str] { &["y"] }
-    fn params(&self) -> Vec<(&str, ParamValue)> {
-        vec![("alpha", ParamValue::Number(0.5))]
+impl Plugin for Scale {
+    fn name(&self) -> &'static str { "Scale" }
+
+    fn params(&self) -> Vec<ParamSpec> {
+        vec![ParamSpec::number("factor").required()]
     }
-    fn infer_shape(&self, inputs: &[Shape], _params: &[ParamValue]) -> Vec<Shape> {
-        vec![inputs[0].clone()]
+
+    fn infer_shape(&self, inputs: &[Shape], _params: &HashMap<String, ParamValue>)
+        -> Result<Vec<Shape>, String>
+    {
+        if inputs.is_empty() {
+            return Err("Scale requires an input".into());
+        }
+        Ok(vec![inputs[0].clone()])  // passthrough
     }
+
+    fn codegen(&self, target: &str, block: &Block, input_vars: &[String],
+               output_vars: &[String]) -> Option<BlockCodegenResult>
+    {
+        match target {
+            "pytorch" => Some(BlockCodegenResult::stateless(
+                format!("{} = {} * factor", output_vars[0], input_vars[0]),
+            )),
+            "keras" => Some(BlockCodegenResult::stateless(
+                format!("{} = {} * factor", output_vars[0], input_vars[0]),
+            )),
+            "candle" => Some(BlockCodegenResult::stateless(
+                format!("{} = {}.mul(factor)?;", output_vars[0], input_vars[0]),
+            )),
+            _ => None,
+        }
+    }
+}
+
+register_plugin!(Scale);
+export_plugin!(Scale);    // required for dynamic loading
+```
+
+Build it:
+
+```bash
+cd my-plugin && cargo build
+```
+
+### The `Plugin` Trait
+
+| Method | Description | Default |
+|--------|-------------|---------|
+| `name()` | Block type name (e.g. `"Scale"`) | — |
+| `params()` | Parameter specifications | — |
+| `infer_shape(inputs, params)` | Infer output shapes | — |
+| `codegen(target, block, input_vars, output_vars)` | Generate framework code | — |
+| `param_count(inputs, params)` | Learnable parameter count | `None` |
+| `show_depth()` | Whether SVG height scales with channel depth | `true` |
+| `num_inputs()` | Expected input count (`None` = variable) | `Some(1)` |
+| `num_outputs()` | Expected output count (`None` = variable) | `Some(1)` |
+
+Return `Some(2)` for `num_outputs()` on recurrent blocks (LSTM, GRU return
+hidden + cell state). Return `None` for variable-I/O blocks (Concat takes
+any number of inputs; Split produces a configurable number of outputs).
+
+### `BlockCodegenResult` Variants
+
+| Constructor | Use case |
+|-------------|----------|
+| `BlockCodegenResult::stateless(code)` | No extra state needed (activations, arithmetic) |
+| `BlockCodegenResult::stateful(init, forward)` | Needs `__init__` params and `forward` body |
+| `BlockCodegenResult::candle(field, init, forward)` | Candle-specific: struct field, `new()` init, `forward()` body |
+
+### Configuration — `.mlmdrc`
+
+Point the CLI to your compiled plugin:
+
+```json
+{
+  "plugins": "target/debug/libmy_plugin.dylib",
+  "targets": [
+    { "lang": "pytorch", "out": "generated/" }
+  ]
 }
 ```
 
-### Plugin Discovery
+The path is relative to the directory containing `.mlmdrc`. The CLI searches
+for `.mlmdrc` starting from the current directory and walking upward.
 
-The CLI loads `.wasm` / `.so` / `.dylib` files from the plugins directory specified in `.mlmdrc`.
+### Listing Registered Blocks
 
-### Usage
+```bash
+# All blocks (builtin + dynamic) with I/O signatures
+$ mlmd plugin list
 
-1. Create a plugins directory (e.g., `./mlmd-plugins/`).
-2. Point to it in `.mlmdrc`:
-   ```json
-   { "plugins": "./mlmd-plugins" }
-   ```
-3. Use the custom block in `.mlmd` files:
-   ```mlmd
-   MyCustomBlock(alpha=0.3)
-   ```
+Registered blocks — 44 builtin, 1 dynamic
 
-Shape inference, SVG rendering, and code generation all use your plugin.
+Builtin blocks:
+  [] -> Input(shape: Shape) -> [x]
+  [x] -> Conv2d(in_channels: Int, out_channels: Int, kernel_size: Int,
+                 [stride: Int = 1], [padding: Int = 0]) -> [x]
+  [a, b] -> MatMul() -> [x]
+  [a, b] -> LSTM(hidden_size: Int) -> [a, b]
+  [x] -> Split(chunks: Int) -> […]
+  […] -> Concat(axis: Int) -> [x]
+  …
+
+Dynamic plugins:
+  [x] -> Scale(factor: Num) -> [x]
+    → target/debug/libmy_plugin.dylib
+```
+
+I/O notation:
+- `[x]` = 1 tensor, `[a, b]` = 2 tensors, `[]` = 0 (Input block)
+- `[…]` = variable number (Concat, Split)
+
+### Single-File Plugin (`mlmd plugin new`)
+
+For quick prototyping, create just the source file:
+
+```bash
+mlmd plugin new MyCustomLayer
+# Creates my_custom_layer.rs
+```
+
+This produces a standalone `.rs` file with the `Plugin` trait stub and
+`register_plugin!` macro — intended for projects that vendor plugin code
+directly rather than loading dynamically.
+
+### Reference Example
+
+The [`mlmd-example-plugin/`](./mlmd-example-plugin/) directory contains a
+complete, working `Scale` plugin with tests. It demonstrates all three
+codegen targets, parameter access, and the full registration + export flow.
+
+```bash
+cd mlmd-example-plugin && cargo build
+```
+
+Then add it to `.mlmdrc` and use `Scale(factor=2.0)` in any `.mlmd` file.
 
 ---
 
