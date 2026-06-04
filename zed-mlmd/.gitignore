@@ -1,6 +1,0 @@
-grammars/mlmd/src/
-grammars/mlmd/node_modules/
-grammars/mlmd/*.wasm
-grammars/mlmd/binding.gyp
-grammars/mlmd/bindings/
-target/

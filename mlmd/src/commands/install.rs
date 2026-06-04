@@ -132,7 +132,7 @@ fn install_zed() -> anyhow::Result<()> {
     let toml_content = std::fs::read_to_string(&extension_toml_path)
         .map_err(|e| anyhow::anyhow!("Failed to read extension.toml: {}", e))?;
 
-    let grammar_abs_path = project_root.join("zed-mlmd").join("grammars").join("mlmd");
+    let grammar_abs_path = project_root.join("grammars").join("mlmd-grammar");
     let file_url = format!("file://{}", grammar_abs_path.display());
 
     // Update the grammar URL in extension.toml
