@@ -6,3 +6,5 @@ pub mod loader;
 pub mod registry;
 pub mod scaffold;
 pub mod traits;
+#[cfg(feature = "wasm-plugins")]
+pub mod wasm_loader;

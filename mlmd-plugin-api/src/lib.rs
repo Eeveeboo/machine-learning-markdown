@@ -48,7 +48,7 @@
 // ```
 // ---------------------------------------------------------------------------
 
-pub use mlmd_plugin_api_macros::{export_plugin, register_plugin};
+pub use mlmd_plugin_api_macros::{export_plugin, export_wasm_plugin, register_plugin};
 
 // Re-export core types that plugin authors commonly need.
 pub use mlmd_core::ast::graph::{Block, Shape};

@@ -13,6 +13,7 @@ path = "src/main.rs"
 [features]
 default = ["dynamic-plugins"]
 dynamic-plugins = ["mlmd-core/dynamic-plugins", "dep:libloading"]
+wasm-plugins = ["mlmd-core/wasm-plugins"]
 
 [dependencies]
 mlmd-core = { path = "../mlmd-core" }

@@ -2,9 +2,10 @@ use clap::{Args, Subcommand};
 use std::collections::HashSet;
 use std::path::Path;
 
-use mlmd_core::config::loader::MlmdConfig;
+use mlmd_core::config::loader::{MlmdConfig, PluginPaths};
 use mlmd_core::plugin::scaffold::{
-    generate_plugin_cargo_toml, generate_plugin_file, kebab_to_pascal, to_snake_case,
+    generate_plugin_cargo_toml, generate_plugin_file, generate_plugin_file_wasm, kebab_to_pascal,
+    to_snake_case,
 };
 
 #[derive(Args)]
@@ -29,6 +30,9 @@ pub enum PluginAction {
         /// PascalCase block name (defaults to PascalCase(plugin_name))
         #[arg(long)]
         block_name: Option<String>,
+        /// Target WASM instead of native .so/.dylib
+        #[arg(long, default_value_t = false)]
+        wasm: bool,
     },
 }
 
@@ -39,7 +43,8 @@ pub fn run(args: PluginArgs) -> anyhow::Result<()> {
         PluginAction::Init {
             plugin_name,
             block_name,
-        } => init_plugin(&plugin_name, block_name.as_deref()),
+            wasm,
+        } => init_plugin(&plugin_name, block_name.as_deref(), wasm),
     }
 }
 
@@ -162,7 +167,7 @@ fn format_io_labels(count: Option<usize>) -> String {
     }
 }
 
-fn init_plugin(plugin_name: &str, block_name: Option<&str>) -> anyhow::Result<()> {
+fn init_plugin(plugin_name: &str, block_name: Option<&str>, wasm: bool) -> anyhow::Result<()> {
     let block_name = block_name
         .map(|s| s.to_string())
         .unwrap_or_else(|| kebab_to_pascal(plugin_name));
@@ -184,22 +189,30 @@ fn init_plugin(plugin_name: &str, block_name: Option<&str>) -> anyhow::Result<()
     println!("  Created {}/Cargo.toml", plugin_name);
 
     // Write src/lib.rs
-    let lib_rs = generate_plugin_file(&block_name);
+    let lib_rs = if wasm {
+        generate_plugin_file_wasm(&block_name)
+    } else {
+        generate_plugin_file(&block_name)
+    };
     std::fs::write(src_dir.join("lib.rs"), &lib_rs)
         .map_err(|e| anyhow::anyhow!("Failed to write src/lib.rs: {e}"))?;
     println!("  Created {}/src/lib.rs", plugin_name);
 
     // Register in .mlmdrc
-    let lib_filename = format!(
-        "{}{}{}",
-        std::env::consts::DLL_PREFIX,
-        plugin_name.replace('-', "_"),
-        std::env::consts::DLL_SUFFIX
-    );
-    let plugin_path = format!("target/debug/{}", lib_filename);
+    let plugin_path = if wasm {
+        format!("target/wasm32-wasi/debug/{}.wasm", plugin_name.replace('-', "_"))
+    } else {
+        let lib_filename = format!(
+            "{}{}{}",
+            std::env::consts::DLL_PREFIX,
+            plugin_name.replace('-', "_"),
+            std::env::consts::DLL_SUFFIX
+        );
+        format!("target/debug/{}", lib_filename)
+    };
 
     let config = MlmdConfig {
-        plugins: Some(plugin_path),
+        plugins: Some(PluginPaths::Single(plugin_path)),
         targets: None,
     };
 
@@ -209,8 +222,15 @@ fn init_plugin(plugin_name: &str, block_name: Option<&str>) -> anyhow::Result<()
 
     println!();
     println!("Next steps:");
-    println!("  cd {plugin_name} && cargo build");
-    println!("  Then use \"{block_name}\" in your .mlmd files");
+    if wasm {
+        println!("  cd {plugin_name}");
+        println!("  rustup target add wasm32-wasi");
+        println!("  cargo build --target wasm32-wasi --release");
+        println!("  Then use \"{block_name}\" in your .mlmd files");
+    } else {
+        println!("  cd {plugin_name} && cargo build");
+        println!("  Then use \"{block_name}\" in your .mlmd files");
+    }
 
     Ok(())
 }

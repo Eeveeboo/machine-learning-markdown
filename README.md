@@ -468,8 +468,14 @@ The LSP server (`mlmd lsp`) communicates over stdin/stdout and can be integrated
 
 ## Plugin System
 
-MLMD supports custom block types via a Rust plugin system. Plugins are
-implemented as Rust `cdylib` libraries that register themselves at load time.
+MLMD supports custom block types via a Rust plugin system.  There are **two
+methods** for creating plugins:
+
+1. **Native shared library** (`.so` / `.dylib`) — loaded via `libloading`
+2. **WebAssembly module** (`.wasm`) — loaded via `wasmtime`
+
+Both methods use the same `Plugin` trait and `register_plugin!` macro.  The
+only difference is the export macro and build target.
 
 ### Architecture
 
@@ -480,22 +486,27 @@ A plugin consists of:
    three codegen dispatch functions (pytorch / keras / candle), then wires them
    into the global registries
 3. **`export_plugin!`** — a proc-macro that generates the `MLMD_PLUGIN` C-ABI
-   symbol for dynamic loading via `libloading`
+   symbol for **native** dynamic loading via `libloading`
+4. **`export_wasm_plugin!`** — a proc-macro that generates individual WASM
+   exports for **WASM** dynamic loading via `wasmtime`
 
 When the CLI starts, it:
 
 1. Registers all 44 builtin blocks (`mlmd_builtin_plugins::register_all()`)
-2. Loads `.mlmdrc` and calls `libloading::Library::new()` on the plugin path
-3. Discovers the `MLMD_PLUGIN` symbol, calls it to get a `PluginFFI` function
-   table, then registers that plugin's block with the shape inference system
+2. Loads `.mlmdrc` and reads the `plugins` field (single path or array)
+3. For each plugin path, auto-detects the format by extension:
+   - `.wasm` → loaded via `wasmtime` using `export_wasm_plugin!` exports
+   - `.so` / `.dylib` → loaded via `libloading` using the `MLMD_PLUGIN` symbol
 
 Once registered, the custom block is indistinguishable from builtins — it
 participates in shape inference, SVG rendering, and code generation for all
 three targets.
 
-### Quick Start — `mlmd plugin init`
+---
 
-The easiest way to create a new plugin:
+### Method 1: Native Plugin (`.so` / `.dylib`)
+
+#### Quick Start — `mlmd plugin init`
 
 ```bash
 # Bootstrap a plugin project
@@ -512,10 +523,8 @@ mlmd plugin init my-plugin
 
 This creates a complete plugin project with:
 
-- `Cargo.toml` — `crate-type = ["lib", "cdylib"]` + dependencies on
-  `mlmd-core` and `mlmd-plugin-api`
-- `src/lib.rs` — a scaffold implementing the `Plugin` trait with stub
-  shape inference and codegen for all three targets
+- `Cargo.toml` — `crate-type = ["lib", "cdylib"]` + dependencies
+- `src/lib.rs` — `Plugin` trait stub with `register_plugin!` and `export_plugin!`
 - `.mlmdrc` — updated with the path to the built `.dylib`/`.so`
 
 The block name is auto-derived from the plugin name via `kebab-to-pascal`
@@ -525,9 +534,7 @@ The block name is auto-derived from the plugin name via `kebab-to-pascal`
 mlmd plugin init my-plugin --block-name CustomLayer
 ```
 
-### Manual Plugin Project
-
-A minimal plugin looks like this:
+#### Manual Project
 
 **`Cargo.toml`**
 
@@ -587,7 +594,7 @@ impl Plugin for Scale {
 }
 
 register_plugin!(Scale);
-export_plugin!(Scale);    // required for dynamic loading
+export_plugin!(Scale);    // generates MLMD_PLUGIN symbol for native loading
 ```
 
 Build it:
@@ -595,6 +602,93 @@ Build it:
 ```bash
 cd my-plugin && cargo build
 ```
+
+---
+
+### Method 2: WASM Plugin (`.wasm`)
+
+WASM plugins are loaded via wasmtime at runtime rather than `libloading`.
+This provides **sandboxed execution** and **cross-platform compatibility** —
+the same `.wasm` file works on Linux, macOS, and Windows without recompilation.
+
+#### Quick Start — `mlmd plugin init --wasm`
+
+```bash
+# Bootstrap a WASM plugin project
+mlmd plugin init my-plugin --wasm
+
+# Output:
+#   Created my-plugin/Cargo.toml
+#   Created my-plugin/src/lib.rs
+#   Updated .mlmdrc
+#   Next steps:
+#     cd my-plugin
+#     rustup target add wasm32-wasi
+#     cargo build --target wasm32-wasi --release
+#     Then use "MyPlugin" in your .mlmd files
+```
+
+#### Manual WASM Project
+
+**`Cargo.toml`** — same dependencies; `crate-type` can be just `["lib"]`:
+
+```toml
+[package]
+name = "my-plugin"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["lib"]
+
+[dependencies]
+mlmd-core = { path = "../mlmd-core" }
+mlmd-plugin-api = { path = "../mlmd-plugin-api" }
+```
+
+**`src/lib.rs`** — use `export_wasm_plugin!` instead of `export_plugin!`:
+
+```rust
+use mlmd_plugin_api::*;
+
+struct Scale;
+
+impl Plugin for Scale {
+    // ... same Plugin trait implementation as native ...
+}
+
+register_plugin!(Scale);
+export_wasm_plugin!(Scale);  // generates individual WASM exports
+```
+
+Build it:
+
+```bash
+rustup target add wasm32-wasi
+cd my-plugin && cargo build --target wasm32-wasi --release
+```
+
+The output is `target/wasm32-wasi/release/my_plugin.wasm`.
+
+#### Dual-Export Plugin (both targets)
+
+A single source file can export for both targets simultaneously.  The
+`mlmd-example-plugin` demonstrates this pattern:
+
+```rust
+register_plugin!(Scale);
+export_plugin!(Scale);        // for .dylib/.so (native)
+export_wasm_plugin!(Scale);   // for .wasm
+```
+
+Then build for either target:
+
+```bash
+cargo build -p mlmd-example-plugin                              # → .dylib/.so
+cargo build -p mlmd-example-plugin --target wasm32-wasi         # → .wasm
+```
+
+---
 
 ### The `Plugin` Trait
 
@@ -623,41 +717,44 @@ any number of inputs; Split produces a configurable number of outputs).
 
 ### Configuration — `.mlmdrc`
 
-Point the CLI to your compiled plugin:
+Point the CLI to your compiled plugin(s).  The `plugins` field accepts either
+a single path string or an array of paths (native `.so`/`.dylib` and WASM
+`.wasm` can be mixed):
 
 ```json
 {
-  "plugins": "target/debug/libmy_plugin.dylib",
+  "plugins": [
+    "target/debug/libmy_plugin.dylib",
+    "target/wasm32-wasi/release/my_plugin.wasm"
+  ],
   "targets": [
     { "lang": "pytorch", "out": "generated/" }
   ]
 }
 ```
 
-The path is relative to the directory containing `.mlmdrc`. The CLI searches
+Paths are relative to the directory containing `.mlmdrc`.  The CLI searches
 for `.mlmdrc` starting from the current directory and walking upward.
 
 ### Listing Registered Blocks
 
 ```bash
-# All blocks (builtin + dynamic) with I/O signatures
 $ mlmd plugin list
 
-Registered blocks — 44 builtin, 1 dynamic
+Registered blocks — 44 builtin, 2 dynamic
 
 Builtin blocks:
   [] -> Input(shape: Shape) -> [x]
   [x] -> Conv2d(in_channels: Int, out_channels: Int, kernel_size: Int,
                  [stride: Int = 1], [padding: Int = 0]) -> [x]
   [a, b] -> MatMul() -> [x]
-  [a, b] -> LSTM(hidden_size: Int) -> [a, b]
-  [x] -> Split(chunks: Int) -> […]
-  […] -> Concat(axis: Int) -> [x]
-  …
+  ...
 
 Dynamic plugins:
   [x] -> Scale(factor: Num) -> [x]
     → target/debug/libmy_plugin.dylib
+  [x] -> MyBlock() -> [x]
+    → target/wasm32-wasi/release/my_plugin.wasm (wasm)
 ```
 
 I/O notation:
@@ -680,8 +777,9 @@ directly rather than loading dynamically.
 ### Reference Example
 
 The [`mlmd-example-plugin/`](./mlmd-example-plugin/) directory contains a
-complete, working `Scale` plugin with tests. It demonstrates all three
-codegen targets, parameter access, and the full registration + export flow.
+complete, working `Scale` plugin with tests. It demonstrates both export
+macros (`export_plugin!` and `export_wasm_plugin!`), all three codegen
+targets, parameter access, and the full registration + export flow.
 
 ```bash
 cd mlmd-example-plugin && cargo build

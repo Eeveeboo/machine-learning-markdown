@@ -49,27 +49,65 @@ fn main() -> anyhow::Result<()> {
 /// Load dynamic plugins referenced in `.mlmdrc`.
 ///
 /// The `.mlmdrc` configuration file may contain a `"plugins"` field pointing
-/// to a `.so` / `.dylib` that exports the `MLMD_PLUGIN` symbol.  If present,
-/// the library is loaded and its block(s) are registered with the global
-/// BlockDef and codegen registries via `register_dynamic_plugin`.
+/// to a `.so` / `.dylib` or `.wasm` file (or an array of such paths).
+/// Each plugin is loaded and registered with the global BlockDef and codegen
+/// registries via the appropriate adapter method.
 fn load_dynamic_plugins() -> anyhow::Result<()> {
     let config = mlmd_core::config::loader::load_config(None)
         .map_err(|e| anyhow::anyhow!("Failed to load .mlmdrc: {e}"))?;
 
     if let Some(config) = config {
-        if let Some(plugin_path) = &config.plugins {
-            #[cfg(feature = "dynamic-plugins")]
-            {
-                let name = mlmd_core::plugin::adapter::register_dynamic_plugin(plugin_path)
-                    .map_err(|e| anyhow::anyhow!("Failed to load plugin '{plugin_path}': {e}"))?;
-                eprintln!("Loaded dynamic plugin: {name} ({plugin_path})");
+        if let Some(plugin_paths) = &config.plugins {
+            let paths: Vec<&str> = plugin_paths.as_paths();
+
+            if paths.is_empty() {
+                return Ok(());
             }
-            #[cfg(not(feature = "dynamic-plugins"))]
-            {
-                anyhow::bail!(
-                    "Dynamic plugins are not supported in this build. \
-                     Rebuild with the 'dynamic-plugins' feature enabled."
-                );
+
+            for plugin_path in paths {
+                let path_display = plugin_path;
+
+                // Auto-detect WASM vs native based on extension
+                if path_display.ends_with(".wasm") {
+                    #[cfg(feature = "wasm-plugins")]
+                    {
+                        let name =
+                            mlmd_core::plugin::adapter::register_wasm_plugin(plugin_path)
+                                .map_err(|e| {
+                                    anyhow::anyhow!(
+                                        "Failed to load WASM plugin '{plugin_path}': {e}"
+                                    )
+                                })?;
+                        eprintln!("Loaded WASM plugin: {name} ({plugin_path})");
+                    }
+                    #[cfg(not(feature = "wasm-plugins"))]
+                    {
+                        anyhow::bail!(
+                            "WASM plugins are not supported in this build. \
+                             Rebuild with the 'wasm-plugins' feature enabled. \
+                             Path: {plugin_path}"
+                        );
+                    }
+                } else {
+                    #[cfg(feature = "dynamic-plugins")]
+                    {
+                        let name =
+                            mlmd_core::plugin::adapter::register_dynamic_plugin(plugin_path)
+                                .map_err(|e| {
+                                    anyhow::anyhow!(
+                                        "Failed to load plugin '{plugin_path}': {e}"
+                                    )
+                                })?;
+                        eprintln!("Loaded dynamic plugin: {name} ({plugin_path})");
+                    }
+                    #[cfg(not(feature = "dynamic-plugins"))]
+                    {
+                        anyhow::bail!(
+                            "Dynamic plugins are not supported in this build. \
+                             Rebuild with the 'dynamic-plugins' feature enabled."
+                        );
+                    }
+                }
             }
         }
     }

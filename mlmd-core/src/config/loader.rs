@@ -12,10 +12,58 @@ pub struct TargetConfig {
     pub out: String,
 }
 
+/// Flexible plugin path: either a single path string or an array of paths.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum PluginPaths {
+    Single(String),
+    Multiple(Vec<String>),
+}
+
+impl PluginPaths {
+    /// Return all plugin paths as a flat `Vec<&str>`.
+    pub fn as_paths(&self) -> Vec<&str> {
+        match self {
+            PluginPaths::Single(p) => vec![p.as_str()],
+            PluginPaths::Multiple(v) => v.iter().map(|s| s.as_str()).collect(),
+        }
+    }
+
+    /// Return `true` if no paths are configured.
+    pub fn is_empty(&self) -> bool {
+        match self {
+            PluginPaths::Single(_) => false,
+            PluginPaths::Multiple(v) => v.is_empty(),
+        }
+    }
+
+    /// Return the number of paths.
+    pub fn len(&self) -> usize {
+        match self {
+            PluginPaths::Single(_) => 1,
+            PluginPaths::Multiple(v) => v.len(),
+        }
+    }
+}
+
+/// Convenience: convert a single `String` or `Vec<String>` into `PluginPaths`.
+impl From<String> for PluginPaths {
+    fn from(s: String) -> Self {
+        PluginPaths::Single(s)
+    }
+}
+impl From<Vec<String>> for PluginPaths {
+    fn from(v: Vec<String>) -> Self {
+        PluginPaths::Multiple(v)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MlmdConfig {
+    /// Plugin path(s): either a single string or an array of strings.
+    /// Each entry may be a `.so`/`.dylib` (native) or `.wasm` (WASM) file.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub plugins: Option<String>,
+    pub plugins: Option<PluginPaths>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub targets: Option<Vec<TargetConfig>>,

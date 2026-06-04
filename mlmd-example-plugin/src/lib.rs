@@ -108,9 +108,16 @@ impl Plugin for Scale {
 
 register_plugin!(Scale);
 
-// Export the MLMD_PLUGIN C-ABI symbol for dynamic loading.
-// This generates all the FFI boilerplate automatically — no ffi.rs needed.
+// Export the MLMD_PLUGIN C-ABI symbol for native dynamic loading
+// (.so/.dylib via libloading).
 export_plugin!(Scale);
+
+// Export individual WASM-compatible functions for WASM dynamic loading
+// (.wasm via wasmtime).  Both exports can coexist — use the appropriate
+// one depending on the build target:
+//   cargo build -p mlmd-example-plugin                     → .dylib/.so (native)
+//   cargo build -p mlmd-example-plugin --target wasm32-wasi → .wasm
+export_wasm_plugin!(Scale);
 
 // ---------------------------------------------------------------------------
 // Tests
