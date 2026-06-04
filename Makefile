@@ -16,7 +16,7 @@ test: test-examples test-rust-examples  ## Run all tests (Rust + Python examples
 	$(CARGO) test --workspace
 
 test-examples:  ## Run Python example tests
-	cd examples && uv run pytest -v 2>/dev/null || echo "Python tests not configured yet (need uv + deps)"
+	cd examples && uv sync && uv run pytest -v
 
 test-rust-examples:  ## Run Rust example tests
 	$(CARGO) test -p mlmd-examples
@@ -43,7 +43,7 @@ clean:  ## Clean all build artifacts
 
 examples: generate-examples  ## Generate and run all examples
 	$(CARGO) test -p mlmd-examples
-	cd examples && uv run pytest -v 2>/dev/null || echo "Python tests not configured yet"
+	cd examples && uv run pytest -v
 
 generate-examples:  ## Generate output from all .mlmd example files
 	for f in examples/*.mlmd; do \

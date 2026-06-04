@@ -13,3 +13,4 @@ grammars/
 examples/.venv/
 examples/.pytest_cache/
 examples/__pycache__/
+examples/mlmd_examples_tests.egg-info/
