@@ -31,6 +31,8 @@ fn main() -> anyhow::Result<()> {
     mlmd_builtin_plugins::register_all();
     // Register codegen targets (pytorch, keras, candle)
     mlmd_core::codegen::targets::register_all_codegen_targets();
+    // Load dynamic plugins from .mlmdrc (if present)
+    load_dynamic_plugins()?;
 
     let cli = Cli::parse();
 
@@ -42,4 +44,35 @@ fn main() -> anyhow::Result<()> {
         Commands::Install(args) => commands::install::run(args),
         Commands::Plugin(args) => commands::plugin::run(args),
     }
+}
+
+/// Load dynamic plugins referenced in `.mlmdrc`.
+///
+/// The `.mlmdrc` configuration file may contain a `"plugins"` field pointing
+/// to a `.so` / `.dylib` that exports the `MLMD_PLUGIN` symbol.  If present,
+/// the library is loaded and its block(s) are registered with the global
+/// BlockDef and codegen registries via `register_dynamic_plugin`.
+fn load_dynamic_plugins() -> anyhow::Result<()> {
+    let config = mlmd_core::config::loader::load_config(None)
+        .map_err(|e| anyhow::anyhow!("Failed to load .mlmdrc: {e}"))?;
+
+    if let Some(config) = config {
+        if let Some(plugin_path) = &config.plugins {
+            #[cfg(feature = "dynamic-plugins")]
+            {
+                let name = mlmd_core::plugin::adapter::register_dynamic_plugin(plugin_path)
+                    .map_err(|e| anyhow::anyhow!("Failed to load plugin '{plugin_path}': {e}"))?;
+                eprintln!("Loaded dynamic plugin: {name} ({plugin_path})");
+            }
+            #[cfg(not(feature = "dynamic-plugins"))]
+            {
+                anyhow::bail!(
+                    "Dynamic plugins are not supported in this build. \
+                     Rebuild with the 'dynamic-plugins' feature enabled."
+                );
+            }
+        }
+    }
+
+    Ok(())
 }

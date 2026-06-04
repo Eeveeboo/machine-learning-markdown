@@ -25,8 +25,9 @@ pub struct DynamicPlugin {
 impl DynamicPlugin {
     /// Load a plugin from a `.so` / `.dylib` file.
     ///
-    /// The library **must** export a `MLMD_PLUGIN` symbol that points to a
-    /// static `PluginFFI` struct.
+    /// The library **must** export a `MLMD_PLUGIN` function with the signature
+    /// `extern "C" fn() -> *const PluginFFI`.  The loader calls this function
+    /// to obtain the FFI function table.
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, String> {
         unsafe {
             let lib = Arc::new(Library::new(path.as_ref()).map_err(|e| {
@@ -37,11 +38,20 @@ impl DynamicPlugin {
                 )
             })?);
 
-            let ffi: Symbol<*const PluginFFI> = lib
+            // MLMD_PLUGIN is an extern "C" fn() -> *const PluginFFI.
+            // Load it as a function pointer, then call it to get the table.
+            type PluginInitFn = unsafe extern "C" fn() -> *const PluginFFI;
+
+            let init_fn: Symbol<PluginInitFn> = lib
                 .get(b"MLMD_PLUGIN\0")
                 .map_err(|e| format!("Failed to locate MLMD_PLUGIN symbol: {}", e))?;
 
-            let ffi_ref: &'static PluginFFI = &**ffi;
+            let ffi_ptr: *const PluginFFI = init_fn();
+            if ffi_ptr.is_null() {
+                return Err("MLMD_PLUGIN returned null pointer".to_string());
+            }
+
+            let ffi_ref: &'static PluginFFI = &*ffi_ptr;
 
             Ok(DynamicPlugin {
                 _lib: lib,

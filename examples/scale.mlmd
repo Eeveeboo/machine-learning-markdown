@@ -1,0 +1,17 @@
+# Scale block example
+# Demonstrates a custom dynamically-loaded plugin.
+#
+# The Scale block multiplies the input tensor by a learned `factor`.
+# Run with:
+#   cargo build -p mlmd-example-plugin
+#   cp examples/mlmdrc.example.json .mlmdrc
+#   cargo run -p mlmd -- generate examples/scale.mlmd
+
+[[ ScaledModel ]]
+
+Input(shape=(1,3,32,32))
+    -> Scale(factor=2.0)
+    -> ReLU
+    -> Flatten
+    -> Linear(out_features=10)
+    -> Output

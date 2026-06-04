@@ -10,63 +10,63 @@
 <text x="122.95575221238937" y="257.2069289447545" fill="#64748b" font-family="sans-serif" font-size="11" font-weight="500">UNet / Bottleneck</text>
 <rect x="30" y="890.3891116582429" width="380" height="704.3891116582429" fill="none" rx="8" stroke="#94a3b8" stroke-dasharray="6,4" stroke-width="1.5" />
 <text x="38" y="904.3891116582429" fill="#64748b" font-family="sans-serif" font-size="11" font-weight="500">UNet / Decoder</text>
-<rect x="124.95575221238937" y="878.3891116582429" width="190.08849557522126" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
-<text x="220" y="892.3891116582429" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">TransposedConv2d k=2 s=2 f=64</text>
-<text x="220" y="902.3891116582429" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(64,32,32)</text>
+<rect x="40" y="1464.7782233164858" width="360" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="220" y="1478.7782233164858" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Conv2d k=1 f=1</text>
+<text x="220" y="1488.7782233164858" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(1,64,64)</text>
 <rect x="40" y="1412.7782233164858" width="360" height="28" rx="8" ry="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2" />
 <text x="220" y="1426.7782233164858" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">ReLU</text>
 <text x="220" y="1436.7782233164858" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(32,64,64)</text>
-<rect x="167.43362831858406" y="826.3891116582429" width="105.13274336283186" height="28" rx="8" ry="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2" />
-<text x="220" y="840.3891116582429" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">ReLU</text>
-<text x="220" y="850.3891116582429" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(128,16,16)</text>
+<rect x="124.95575221238937" y="303.2069289447545" width="190.08849557522126" height="143.1821827134884" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="220" y="317.2069289447545" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Conv2d p=1 f=64 k=3</text>
+<text x="220" y="442.3891116582429" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(64,32,32)</text>
+<rect x="167.43362831858406" y="574.3891116582429" width="105.13274336283186" height="228" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="220" y="588.3891116582429" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Conv2d f=128 k=3 p=1</text>
+<text x="220" y="798.3891116582429" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(128,16,16)</text>
 <rect x="40" y="40" width="360" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
 <text x="220" y="54" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Input shape=(1,64,64)</text>
 <text x="220" y="64" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(1,64,64)</text>
-<rect x="124.95575221238937" y="930.3891116582429" width="190.08849557522126" height="28" rx="8" ry="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" />
-<text x="220" y="944.3891116582429" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Concat axis=0</text>
-<text x="220" y="954.3891116582429" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(128,32,32)</text>
-<rect x="167.43362831858406" y="522.3891116582429" width="105.13274336283186" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
-<text x="220" y="536.3891116582429" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">MaxPool k=2 s=2</text>
-<text x="220" y="546.3891116582429" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(64,16,16)</text>
-<rect x="167.43362831858406" y="574.3891116582429" width="105.13274336283186" height="228" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
-<text x="220" y="588.3891116582429" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Conv2d k=3 f=128 p=1</text>
-<text x="220" y="798.3891116582429" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(128,16,16)</text>
-<rect x="124.95575221238937" y="982.3891116582429" width="190.08849557522126" height="143.1821827134884" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
-<text x="220" y="996.3891116582429" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Conv2d f=64 p=1 k=3</text>
-<text x="220" y="1121.5712943717313" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(64,32,32)</text>
-<rect x="40" y="199.2069289447545" width="360" height="28" rx="8" ry="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2" />
-<text x="220" y="213.2069289447545" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">ReLU</text>
-<text x="220" y="223.2069289447545" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(32,64,64)</text>
-<rect x="124.95575221238937" y="303.2069289447545" width="190.08849557522126" height="143.1821827134884" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
-<text x="220" y="317.2069289447545" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Conv2d f=64 k=3 p=1</text>
-<text x="220" y="442.3891116582429" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(64,32,32)</text>
-<rect x="40" y="92" width="360" height="83.20692894475451" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
-<text x="220" y="106" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Conv2d k=3 p=1 f=32</text>
-<text x="220" y="171.2069289447545" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(32,64,64)</text>
-<rect x="124.95575221238937" y="470.3891116582429" width="190.08849557522126" height="28" rx="8" ry="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2" />
-<text x="220" y="484.3891116582429" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">ReLU</text>
-<text x="220" y="494.3891116582429" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(64,32,32)</text>
-<rect x="124.95575221238937" y="251.2069289447545" width="190.08849557522126" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
-<text x="220" y="265.2069289447545" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">MaxPool k=2 s=2</text>
-<text x="220" y="275.2069289447545" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(32,32,32)</text>
+<rect x="40" y="1305.5712943717313" width="360" height="83.20692894475451" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="220" y="1319.5712943717313" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Conv2d p=1 f=32 k=3</text>
+<text x="220" y="1384.7782233164858" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(32,64,64)</text>
 <rect x="124.95575221238937" y="1149.5712943717313" width="190.08849557522126" height="28" rx="8" ry="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2" />
 <text x="220" y="1163.5712943717313" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">ReLU</text>
 <text x="220" y="1173.5712943717313" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(64,32,32)</text>
+<rect x="124.95575221238937" y="878.3891116582429" width="190.08849557522126" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="220" y="892.3891116582429" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">TransposedConv2d f=64 s=2 k=2</text>
+<text x="220" y="902.3891116582429" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(64,32,32)</text>
 <rect x="40" y="1201.5712943717313" width="360" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
 <text x="220" y="1215.5712943717313" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">TransposedConv2d f=32 k=2 s=2</text>
 <text x="220" y="1225.5712943717313" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(32,64,64)</text>
-<rect x="40" y="1253.5712943717313" width="360" height="28" rx="8" ry="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" />
-<text x="220" y="1267.5712943717313" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Concat axis=0</text>
-<text x="220" y="1277.5712943717313" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(64,64,64)</text>
-<rect x="40" y="1305.5712943717313" width="360" height="83.20692894475451" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
-<text x="220" y="1319.5712943717313" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Conv2d f=32 p=1 k=3</text>
-<text x="220" y="1384.7782233164858" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(32,64,64)</text>
-<rect x="40" y="1464.7782233164858" width="360" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
-<text x="220" y="1478.7782233164858" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Conv2d f=1 k=1</text>
-<text x="220" y="1488.7782233164858" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(1,64,64)</text>
+<rect x="124.95575221238937" y="470.3891116582429" width="190.08849557522126" height="28" rx="8" ry="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2" />
+<text x="220" y="484.3891116582429" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">ReLU</text>
+<text x="220" y="494.3891116582429" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(64,32,32)</text>
+<rect x="124.95575221238937" y="982.3891116582429" width="190.08849557522126" height="143.1821827134884" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="220" y="996.3891116582429" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Conv2d f=64 k=3 p=1</text>
+<text x="220" y="1121.5712943717313" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(64,32,32)</text>
 <rect x="40" y="1516.7782233164858" width="360" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
 <text x="220" y="1530.7782233164858" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Output</text>
 <text x="220" y="1540.7782233164858" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(1,64,64)</text>
+<rect x="124.95575221238937" y="930.3891116582429" width="190.08849557522126" height="28" rx="8" ry="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" />
+<text x="220" y="944.3891116582429" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Concat axis=0</text>
+<text x="220" y="954.3891116582429" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(128,32,32)</text>
+<rect x="124.95575221238937" y="251.2069289447545" width="190.08849557522126" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="220" y="265.2069289447545" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">MaxPool k=2 s=2</text>
+<text x="220" y="275.2069289447545" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(32,32,32)</text>
+<rect x="40" y="1253.5712943717313" width="360" height="28" rx="8" ry="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" />
+<text x="220" y="1267.5712943717313" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Concat axis=0</text>
+<text x="220" y="1277.5712943717313" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(64,64,64)</text>
+<rect x="167.43362831858406" y="522.3891116582429" width="105.13274336283186" height="28" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="220" y="536.3891116582429" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">MaxPool s=2 k=2</text>
+<text x="220" y="546.3891116582429" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(64,16,16)</text>
+<rect x="40" y="92" width="360" height="83.20692894475451" rx="8" ry="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2" />
+<text x="220" y="106" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">Conv2d k=3 f=32 p=1</text>
+<text x="220" y="171.2069289447545" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(32,64,64)</text>
+<rect x="40" y="199.2069289447545" width="360" height="28" rx="8" ry="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2" />
+<text x="220" y="213.2069289447545" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">ReLU</text>
+<text x="220" y="223.2069289447545" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(32,64,64)</text>
+<rect x="167.43362831858406" y="826.3891116582429" width="105.13274336283186" height="28" rx="8" ry="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2" />
+<text x="220" y="840.3891116582429" fill="#1e293b" font-family="sans-serif" font-size="11" font-weight="500" text-anchor="middle">ReLU</text>
+<text x="220" y="850.3891116582429" fill="#64748b" font-family="monospace" font-size="8" text-anchor="middle">(128,16,16)</text>
 <path d="M 220 68 L 220 92" fill="none" marker-end="url(#arrowhead)" stroke="#64748b" stroke-width="1.5" />
 <text x="224" y="84" fill="#94a3b8" font-family="monospace" font-size="8">(1,64,64)</text>
 <path d="M 220 175.2069289447545 L 220 199.2069289447545" fill="none" marker-end="url(#arrowhead)" stroke="#64748b" stroke-width="1.5" />

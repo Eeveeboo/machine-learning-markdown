@@ -1099,8 +1099,10 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "libloading",
  "mlmd-builtin-plugins",
  "mlmd-core",
+ "mlmd-example-plugin",
  "serde_json",
  "tokio",
 ]
@@ -1121,6 +1123,14 @@ dependencies = [
  "serde_json",
  "tokio",
  "tower-lsp",
+]
+
+[[package]]
+name = "mlmd-example-plugin"
+version = "0.1.0"
+dependencies = [
+ "mlmd-core",
+ "serde_json",
 ]
 
 [[package]]

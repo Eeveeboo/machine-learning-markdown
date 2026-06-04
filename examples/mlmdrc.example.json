@@ -1,0 +1,8 @@
+{
+  "plugins": "target/debug/libmlmd_example_plugin.dylib",
+  "targets": [
+    { "lang": "pytorch", "out": "generated/" },
+    { "lang": "candle", "out": "generated/" },
+    { "lang": "keras", "out": "generated/" }
+  ]
+}

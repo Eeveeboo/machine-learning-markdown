@@ -4,6 +4,7 @@ members = [
     "mlmd",
     "mlmd-core",
     "mlmd-builtin-plugins",
+    "mlmd-example-plugin",
     "mlmd-examples",
     "mlmd-extension-zed",
 ]
