@@ -30,8 +30,14 @@ impl Plugin for Flatten {
         if inputs.is_empty() {
             return Err("Flatten requires an input".to_string());
         }
-        let flat: usize = inputs[0].iter().product();
-        Ok(vec![vec![flat]])
+        let input = &inputs[0];
+        // Preserve batch dim, flatten the rest (matching nn.Flatten() / flatten_from(1))
+        if input.len() <= 1 {
+            return Ok(vec![input.clone()]);
+        }
+        let batch = input[0];
+        let flat: usize = input[1..].iter().product();
+        Ok(vec![vec![batch, flat]])
     }
 
     fn param_count(
@@ -108,7 +114,13 @@ mod tests {
         let shapes = def
             .infer_shape(&[vec![3, 224, 224]], &HashMap::new())
             .unwrap();
-        assert_eq!(shapes, vec![vec![3 * 224 * 224]]);
+        assert_eq!(shapes, vec![vec![3, 224 * 224]]);
+
+        // 1D input stays 1D (batch dim only)
+        let shapes_1d = def
+            .infer_shape(&[vec![10]], &HashMap::new())
+            .unwrap();
+        assert_eq!(shapes_1d, vec![vec![10]]);
 
         assert!(def.infer_shape(&[], &HashMap::new()).is_err());
         assert_eq!(def.param_count(&[], &HashMap::new()), Some(0));

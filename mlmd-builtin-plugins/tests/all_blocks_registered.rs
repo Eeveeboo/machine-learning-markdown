@@ -368,7 +368,7 @@ fn test_flatten_shape_inference() {
         "Flatten infer_shape failed: {:?}",
         result.err()
     );
-    assert_eq!(result.unwrap()[0], vec![3 * 224 * 224]);
+    assert_eq!(result.unwrap()[0], vec![3, 224 * 224]);
     assert_eq!(pc, Some(0));
 
     let err_result = {
