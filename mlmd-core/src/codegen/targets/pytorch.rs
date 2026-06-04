@@ -318,7 +318,19 @@ impl CodegenTarget for PytorchCodegen {
 
             let result = fn_ptr(b, &input_vars, &output_vars);
             let shape_ann = shape_comment(&b.output_shapes);
-            forward_lines.push(format!("        {}{}", result.forward, shape_ann));
+            let line = indent_lines(&result.forward, "        ");
+            if shape_ann.is_empty() {
+                forward_lines.push(line);
+            } else {
+                // Append shape annotation to the last line
+                match line.rfind('\n') {
+                    Some(pos) => {
+                        let (first, last) = line.split_at(pos + 1);
+                        forward_lines.push(format!("{}{}{}", first, last, shape_ann));
+                    }
+                    None => forward_lines.push(format!("{}{}", line, shape_ann)),
+                }
+            }
         }
 
         // Class name from graph groups or default

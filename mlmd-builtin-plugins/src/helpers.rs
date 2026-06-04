@@ -118,15 +118,20 @@ pub fn conv_out(size: usize, kernel: usize, stride: usize, padding: usize) -> us
 
 /// Compute the output size of a transposed convolution dimension.
 ///
-/// Formula:  (input - 1) * stride - 2 * padding + kernel
+/// Formula:  (input - 1) * stride - 2 * padding + kernel + output_padding
+///
+/// Matches PyTorch's ConvTranspose2d with dilation=1.
 pub fn conv_transpose_output_size(
     input: usize,
     kernel: usize,
     padding: usize,
     stride: usize,
+    output_padding: usize,
 ) -> usize {
-    let result =
-        (input as isize - 1) * (stride as isize) - 2 * (padding as isize) + (kernel as isize);
+    let result = (input as isize - 1) * (stride as isize)
+        - 2 * (padding as isize)
+        + (kernel as isize)
+        + (output_padding as isize);
     if result < 0 {
         0
     } else {
@@ -350,15 +355,22 @@ mod tests {
 
     #[test]
     fn test_conv_transpose_output_size_typical() {
-        // input=4, kernel=3, padding=1, stride=2
-        // (4-1)*2 - 2*1 + 3 = 6 - 2 + 3 = 7
-        assert_eq!(conv_transpose_output_size(4, 3, 1, 2), 7);
+        // input=4, kernel=3, padding=1, stride=2, output_padding=0
+        // (4-1)*2 - 2*1 + 3 + 0 = 6 - 2 + 3 = 7
+        assert_eq!(conv_transpose_output_size(4, 3, 1, 2, 0), 7);
     }
 
     #[test]
     fn test_conv_transpose_output_size_no_padding() {
-        // input=3, kernel=3, padding=0, stride=1
-        // (3-1)*1 - 0 + 3 = 2 + 3 = 5
-        assert_eq!(conv_transpose_output_size(3, 3, 0, 1), 5);
+        // input=3, kernel=3, padding=0, stride=1, output_padding=0
+        // (3-1)*1 - 0 + 3 + 0 = 2 + 3 = 5
+        assert_eq!(conv_transpose_output_size(3, 3, 0, 1, 0), 5);
+    }
+
+    #[test]
+    fn test_conv_transpose_output_size_with_output_padding() {
+        // input=4, kernel=3, padding=1, stride=2, output_padding=1
+        // (4-1)*2 - 2*1 + 3 + 1 = 6 - 2 + 3 + 1 = 8
+        assert_eq!(conv_transpose_output_size(4, 3, 1, 2, 1), 8);
     }
 }

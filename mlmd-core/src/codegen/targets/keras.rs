@@ -26,6 +26,19 @@ fn shape_comment(shapes: &[Vec<usize>]) -> String {
     format!("  # {}", parts.join(", "))
 }
 
+fn indent_lines(s: &str, indent: &str) -> String {
+    s.lines()
+        .map(|line| {
+            if line.is_empty() {
+                String::new()
+            } else {
+                format!("{}{}", indent, line)
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 /// Fallback codegen for blocks that don't have a registered keras codegen.
 fn keras_fallback_codegen(
     block: &Block,
@@ -268,7 +281,19 @@ impl CodegenTarget for KerasCodegen {
             }
             let result = fn_ptr(b, &input_vars, &output_vars);
             let shape_ann = shape_comment(&b.output_shapes);
-            lines.push(format!("    {}{}", result.forward, shape_ann));
+            let line = indent_lines(&result.forward, "    ");
+            if shape_ann.is_empty() {
+                lines.push(line);
+            } else {
+                // Append shape annotation to the last line
+                match line.rfind('\n') {
+                    Some(pos) => {
+                        let (first, last) = line.split_at(pos + 1);
+                        lines.push(format!("{}{}{}", first, last, shape_ann));
+                    }
+                    None => lines.push(format!("{}{}", line, shape_ann)),
+                }
+            }
         }
 
         let model_name = graph

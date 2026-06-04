@@ -12,6 +12,8 @@ pub struct UNet {
     Conv2d_3: candle_nn::Conv2d,
     Conv2d_4: candle_nn::Conv2d,
     Conv2d_5: candle_nn::Conv2d,
+    TransposedConv2d_0: candle_nn::ConvTranspose2d,
+    TransposedConv2d_1: candle_nn::ConvTranspose2d,
 }
 
 #[allow(warnings)]
@@ -26,6 +28,8 @@ impl UNet {
         "Conv2d_3",
         "Conv2d_4",
         "Conv2d_5",
+        "TransposedConv2d_0",
+        "TransposedConv2d_1",
         )
     }
 
@@ -38,6 +42,8 @@ impl UNet {
         conv2d_3: &str,
         conv2d_4: &str,
         conv2d_5: &str,
+        transposed_conv2d_0: &str,
+        transposed_conv2d_1: &str,
     ) -> Result<Self> {
         let Conv2d_0 = candle_nn::conv2d(1, 32, 3, candle_nn::Conv2dConfig { stride: 1, padding: 1, ..Default::default() }, weights.pp(conv2d_0))?;
         let Conv2d_1 = candle_nn::conv2d(32, 64, 3, candle_nn::Conv2dConfig { stride: 1, padding: 1, ..Default::default() }, weights.pp(conv2d_1))?;
@@ -45,6 +51,8 @@ impl UNet {
         let Conv2d_3 = candle_nn::conv2d(128, 64, 3, candle_nn::Conv2dConfig { stride: 1, padding: 1, ..Default::default() }, weights.pp(conv2d_3))?;
         let Conv2d_4 = candle_nn::conv2d(64, 32, 3, candle_nn::Conv2dConfig { stride: 1, padding: 1, ..Default::default() }, weights.pp(conv2d_4))?;
         let Conv2d_5 = candle_nn::conv2d(32, 1, 1, candle_nn::Conv2dConfig { stride: 1, padding: 0, ..Default::default() }, weights.pp(conv2d_5))?;
+        let TransposedConv2d_0 = candle_nn::conv_transpose2d(128, 64, 2, candle_nn::ConvTranspose2dConfig { stride: 2, padding: 0, output_padding: 0, ..Default::default() }, weights.pp(transposed_conv2d_0))?;
+        let TransposedConv2d_1 = candle_nn::conv_transpose2d(64, 32, 2, candle_nn::ConvTranspose2dConfig { stride: 2, padding: 0, output_padding: 0, ..Default::default() }, weights.pp(transposed_conv2d_1))?;
         Ok(Self {
             Conv2d_0,
             Conv2d_1,
@@ -52,6 +60,8 @@ impl UNet {
             Conv2d_3,
             Conv2d_4,
             Conv2d_5,
+            TransposedConv2d_0,
+            TransposedConv2d_1,
         })
     }
 
@@ -66,11 +76,11 @@ impl UNet {
         let x = enc2_skip.max_pool2d(2)?;
         let x = self.Conv2d_2.forward(&x)?;
         let bottleneck = x.relu()?;
-        let up1 = unimplemented!("TransposedConv2d not supported in candle");  // bottleneck
+        let up1 = self.TransposedConv2d_0.forward(&bottleneck)?;  // bottleneck
         let x = Tensor::cat(&[&up1, &enc2_skip], 1)?;
         let x = self.Conv2d_3.forward(&x)?;
         let dec1 = x.relu()?;
-        let up2 = unimplemented!("TransposedConv2d not supported in candle");  // dec1
+        let up2 = self.TransposedConv2d_1.forward(&dec1)?;  // dec1
         let x = Tensor::cat(&[&up2, &enc1_skip], 1)?;
         let x = self.Conv2d_4.forward(&x)?;
         let x = x.relu()?;

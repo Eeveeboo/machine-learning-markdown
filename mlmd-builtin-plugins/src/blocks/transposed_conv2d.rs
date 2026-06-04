@@ -23,6 +23,8 @@ impl Plugin for TransposedConv2d {
             ParamSpec::number("kernel").required(),
             ParamSpec::number("stride").optional(),
             ParamSpec::number("padding").optional(),
+            ParamSpec::number("output_padding").optional(),
+            ParamSpec::boolean("bias").optional(),
         ]
     }
     fn name(&self) -> &'static str {
@@ -47,10 +49,11 @@ impl Plugin for TransposedConv2d {
         let k = get_num(params, "kernel").ok_or("Missing kernel")? as usize;
         let s = get_num(params, "stride").unwrap_or(1.0) as usize;
         let p = get_num(params, "padding").unwrap_or(0.0) as usize;
+        let op = get_num(params, "output_padding").unwrap_or(0.0) as usize;
         Ok(vec![vec![
             f,
-            conv_transpose_output_size(h, k, p, s),
-            conv_transpose_output_size(w, k, p, s),
+            conv_transpose_output_size(h, k, p, s, op),
+            conv_transpose_output_size(w, k, p, s, op),
         ]])
     }
 
@@ -83,10 +86,11 @@ impl Plugin for TransposedConv2d {
                 let kernel = get_kernel(block);
                 let stride = get_stride(block);
                 let padding = get_padding(block);
+                let output_padding = get_output_padding(block);
                 BlockCodegenResult {
                     init: Some(CandleInitOrString::Plain(format!(
-                        "self.{} = nn.ConvTranspose2d({}, {}, {}, stride={}, padding={})",
-                        block.id, in_ch, filters, kernel, stride, padding
+                        "self.{} = nn.ConvTranspose2d({}, {}, {}, stride={}, padding={}, output_padding={})",
+                        block.id, in_ch, filters, kernel, stride, padding, output_padding
                     ))),
                     forward: format!(
                         "{} = self.{}({})",
@@ -119,11 +123,24 @@ impl Plugin for TransposedConv2d {
                 }
             }),
             "candle" => Some({
+                let in_ch = get_in_ch(block);
+                let filters = get_filters(block);
+                let kernel = get_kernel(block);
+                let stride = get_stride(block);
+                let padding = get_padding(block);
+                let output_padding = get_output_padding(block);
                 BlockCodegenResult {
-                    init: None,
+                    init: Some(CandleInitOrString::Candle(CandleInit {
+                        field: format!("{}: candle_nn::ConvTranspose2d", block.id),
+                        body: format!(
+                            "let {} = candle_nn::conv_transpose2d({}, {}, {}, candle_nn::ConvTranspose2dConfig {{ stride: {}, padding: {}, output_padding: {}, ..Default::default() }}, vb.pp(\"{}\"))?;",
+                            block.id, in_ch, filters, kernel, stride, padding, output_padding, block.id
+                        ),
+                    })),
                     forward: format!(
-                        "{} = unimplemented!(\"TransposedConv2d not supported in candle\");  // {}",
+                        "{} = self.{}.forward(&{})?;",
                         output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+                        block.id,
                         input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
                     ),
                 }
@@ -182,6 +199,23 @@ fn get_padding(block: &Block) -> usize {
         n.value as usize
     } else {
         0
+    }
+}
+
+fn get_output_padding(block: &Block) -> usize {
+    if let Some(ParamValue::Number(n)) = block.params.get("output_padding") {
+        n.value as usize
+    } else {
+        0
+    }
+}
+
+#[allow(dead_code)]
+fn get_bias(block: &Block) -> bool {
+    if let Some(ParamValue::Bool(b)) = block.params.get("bias") {
+        b.value
+    } else {
+        true
     }
 }
 
