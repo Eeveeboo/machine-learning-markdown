@@ -1,0 +1,210 @@
+// ---------------------------------------------------------------------------
+// AvgPool block.
+//
+// Port of src/plugins/builtins/AvgPool.ts
+// ---------------------------------------------------------------------------
+
+use std::collections::HashMap;
+
+use mlmd_core::types::*;
+
+use crate::helpers::get_num;
+
+// ---------------------------------------------------------------------------
+// Helper: pool output size
+// ---------------------------------------------------------------------------
+
+fn pool_out(size: usize, kernel: usize, stride: usize, padding: usize) -> usize {
+    let numerator = (size as isize) + 2 * (padding as isize) - (kernel as isize);
+    if numerator < 0 {
+        0
+    } else {
+        (numerator as usize) / stride + 1
+    }
+}
+
+// ---------------------------------------------------------------------------
+// BlockDef for shape inference
+// ---------------------------------------------------------------------------
+
+struct AvgPoolBlockDef;
+
+impl BlockDef for AvgPoolBlockDef {
+    fn name(&self) -> &str {
+        "AvgPool"
+    }
+
+    fn params(&self) -> &[ParamSpec] {
+        static PARAMS: std::sync::LazyLock<Vec<ParamSpec>> = std::sync::LazyLock::new(|| {
+            vec![
+                ParamSpec {
+                    name: "kernel".into(),
+                    param_type: ParamType::Number,
+                    required: true,
+                    default: None,
+                },
+                ParamSpec {
+                    name: "stride".into(),
+                    param_type: ParamType::Number,
+                    required: false,
+                    default: None,
+                },
+                ParamSpec {
+                    name: "padding".into(),
+                    param_type: ParamType::Number,
+                    required: false,
+                    default: None,
+                },
+            ]
+        });
+        &PARAMS
+    }
+
+    fn infer_shape(
+        &self,
+        inputs: &[Shape],
+        params: &HashMap<String, ParamValue>,
+    ) -> Result<Vec<Shape>, String> {
+        if inputs.is_empty() {
+            return Err("AvgPool requires an input".to_string());
+        }
+        if inputs[0].len() < 3 {
+            return Err("AvgPool input must have at least 3 dims (C, H, W)".to_string());
+        }
+        let c = inputs[0][0];
+        let h = inputs[0][1];
+        let w = inputs[0][2];
+        let k = get_num(params, "kernel").ok_or("Missing kernel")? as usize;
+        let s = get_num(params, "stride").unwrap_or(k as f64) as usize;
+        let p = get_num(params, "padding").unwrap_or(0.0) as usize;
+        Ok(vec![vec![c, pool_out(h, k, s, p), pool_out(w, k, s, p)]])
+    }
+
+    fn param_count(
+        &self,
+        _inputs: &[Shape],
+        _params: &HashMap<String, ParamValue>,
+    ) -> Option<usize> {
+        Some(0)
+    }
+
+    fn show_depth(&self) -> bool {
+        false
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Registration
+// ---------------------------------------------------------------------------
+
+pub fn register() {
+    register_block(Box::new(AvgPoolBlockDef));
+
+    register_block_codegen("AvgPool", "pytorch", pytorch_codegen);
+    register_block_codegen("AvgPool", "keras", keras_codegen);
+    register_block_codegen("AvgPool", "candle", candle_codegen);
+}
+
+// ---------------------------------------------------------------------------
+// Codegen helpers
+// ---------------------------------------------------------------------------
+
+fn get_kernel_ps(block: &Block) -> usize {
+    if let Some(ParamValue::Number(n)) = block.params.get("kernel") {
+        n.value as usize
+    } else if let Some(ParamValue::Number(n)) = block.params.get("kernel_size") {
+        n.value as usize
+    } else {
+        2
+    }
+}
+
+fn get_stride_ps(block: &Block, kernel: usize) -> usize {
+    if let Some(ParamValue::Number(n)) = block.params.get("stride") {
+        n.value as usize
+    } else {
+        kernel
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Codegen functions
+// ---------------------------------------------------------------------------
+
+fn pytorch_codegen(
+    block: &Block,
+    input_vars: &[String],
+    output_vars: &[String],
+) -> BlockCodegenResult {
+    let kernel = get_kernel_ps(block);
+    let stride = get_stride_ps(block, kernel);
+    BlockCodegenResult {
+        init: Some(CandleInitOrString::Plain(format!(
+            "self.{} = nn.AvgPool2d({}, stride={})",
+            block.id, kernel, stride
+        ))),
+        forward: format!(
+            "{} = self.{}({})",
+            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+            block.id,
+            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+        ),
+    }
+}
+
+fn keras_codegen(
+    block: &Block,
+    input_vars: &[String],
+    output_vars: &[String],
+) -> BlockCodegenResult {
+    let kernel = get_kernel_ps(block);
+    let stride = get_stride_ps(block, kernel);
+    BlockCodegenResult {
+        init: None,
+        forward: format!(
+            "{} = keras.layers.AveragePooling2D(pool_size={}, strides={})({})",
+            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+            kernel,
+            stride,
+            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+        ),
+    }
+}
+
+fn candle_codegen(
+    _block: &Block,
+    input_vars: &[String],
+    output_vars: &[String],
+) -> BlockCodegenResult {
+    BlockCodegenResult {
+        init: None,
+        forward: format!(
+            "{} = /* AvgPool2d not directly supported in candle_nn::ops */ {}.clone()?;",
+            output_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+            input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
+        ),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mlmd_core::ast::nodes::{NumberVal, SourceLoc};
+
+    #[test]
+    fn test_avg_pool_block_def() {
+        let def = AvgPoolBlockDef;
+        assert_eq!(def.name(), "AvgPool");
+
+        let mut p = HashMap::new();
+        p.insert("kernel".to_string(), ParamValue::Number(Box::new(NumberVal::new(2.0, SourceLoc { line: 0, col: 0, offset: 0 }))));
+        let shapes = def.infer_shape(&[vec![3, 224, 224]], &p).unwrap();
+        assert_eq!(shapes, vec![vec![3, 112, 112]]);
+
+        assert!(def.infer_shape(&[], &HashMap::new()).is_err());
+    }
+}

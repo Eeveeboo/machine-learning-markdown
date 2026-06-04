@@ -1,11 +1,9 @@
-[package]
-name = "zed-mlmd"
-version = "0.1.0"
-edition = "2021"
-
-[lib]
-path = "zed-mlmd/src/lib.rs"
-crate-type = ["cdylib"]
-
-[dependencies]
-zed_extension_api = "0.7.0"
+[workspace]
+resolver = "2"
+members = [
+    "mlmd",
+    "mlmd-core",
+    "mlmd-builtin-plugins",
+    "mlmd-examples",
+    "mlmd-extension-zed",
+]

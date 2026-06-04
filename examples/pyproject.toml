@@ -1,0 +1,9 @@
+[project]
+name = "mlmd-examples-tests"
+version = "0.1.0"
+description = "Tests for MLMD-generated Python models"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+test_files = ["*.test.py"]
+python_files = ["*.test.py"]

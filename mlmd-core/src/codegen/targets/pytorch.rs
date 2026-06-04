@@ -1,0 +1,485 @@
+use std::collections::HashMap;
+use std::sync::OnceLock;
+
+use crate::ast::graph::{Block, Graph};
+use crate::ast::graph_utils::{build_adjacency, topo_sort};
+use crate::codegen::result::GeneratedFile;
+use crate::plugin::traits::CandleInitOrString;
+use crate::codegen::target::{register_target, CodegenTarget};
+use crate::plugin::registry::get_block_codegen;
+use crate::plugin::traits::{BlockCodegenFn, BlockCodegenResult};
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+fn shape_comment(shapes: &[Vec<usize>]) -> String {
+    if shapes.is_empty() {
+        return String::new();
+    }
+    let parts: Vec<String> = shapes
+        .iter()
+        .map(|s| {
+            let inner: Vec<String> = s.iter().map(|d| d.to_string()).collect();
+            format!("[{}]", inner.join(", "))
+        })
+        .collect();
+    format!("  # {}", parts.join(", "))
+}
+
+fn indent_lines(s: &str, indent: &str) -> String {
+    s.lines()
+        .map(|line| {
+            if line.is_empty() {
+                String::new()
+            } else {
+                format!("{}{}", indent, line)
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// Fallback codegen for blocks that don't have a registered pytorch codegen.
+fn pytorch_fallback_codegen(
+    block: &Block,
+    input_vars: &[String],
+    _output_vars: &[String],
+) -> BlockCodegenResult {
+    let main_in = input_vars.first().cloned().unwrap_or_else(|| "x".to_string());
+    BlockCodegenResult {
+        init: None,
+        forward: format!(
+            "{} /* {} — custom block, passthrough in generated code */",
+            main_in, block.block_type
+        ),
+    }
+}
+
+fn get_block_codegen_with_fallback(block_type: &str) -> BlockCodegenFn {
+    get_block_codegen(block_type, "pytorch").unwrap_or(pytorch_fallback_codegen)
+}
+
+// ---------------------------------------------------------------------------
+// Test generation
+// ---------------------------------------------------------------------------
+
+fn generate_pytorch_test(class_name: &str, sorted: &[Block]) -> Option<String> {
+    // Collect input shapes from Input blocks (add batch dim 1)
+    let input_shapes: Vec<Vec<usize>> = sorted
+        .iter()
+        .filter(|b| b.block_type == "Input")
+        .filter_map(|b| b.output_shapes.first())
+        .map(|s| {
+            let mut full = vec![1usize];
+            full.extend_from_slice(s);
+            full
+        })
+        .collect();
+
+    // Collect output shape from Output block's input_shapes (add batch dim 1)
+    let output_shape: Option<Vec<usize>> = sorted
+        .iter()
+        .find(|b| b.block_type == "Output")
+        .and_then(|b| b.input_shapes.first())
+        .map(|s| {
+            let mut full = vec![1usize];
+            full.extend_from_slice(s);
+            full
+        });
+
+    if input_shapes.is_empty() || output_shape.is_none() {
+        return None;
+    }
+    let output_shape = output_shape.unwrap();
+
+    // Build input tensor creation statements
+    let input_lines: Vec<String> = input_shapes
+        .iter()
+        .enumerate()
+        .map(|(i, shape)| {
+            let shape_str = shape
+                .iter()
+                .map(|d| d.to_string())
+                .collect::<Vec<_>>()
+                .join(", ");
+            let var_name = if i == 0 {
+                "x".to_string()
+            } else {
+                format!("x{}", i + 1)
+            };
+            format!("    {} = torch.randn({})", var_name, shape_str)
+        })
+        .collect();
+
+    let input_args: Vec<String> = input_lines
+        .iter()
+        .map(|line| {
+            line.split_whitespace()
+                .nth(1)
+                .unwrap_or("x")
+                .to_string()
+        })
+        .collect();
+
+    let output_shape_str = output_shape
+        .iter()
+        .map(|d| d.to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+
+    let content = format!(
+        "import pytest\nimport torch\n\n\ndef test_forward():\n    model = {}()\n    model.eval()\n{}\n    output = model({})\n    assert output.shape == torch.Size([{output_shape_str}])\n",
+        class_name,
+        input_lines.join("\n"),
+        input_args.join(", "),
+    );
+
+    Some(content)
+}
+
+// ---------------------------------------------------------------------------
+// PytorchCodegen
+// ---------------------------------------------------------------------------
+
+pub struct PytorchCodegen;
+
+impl PytorchCodegen {
+    /// Register this codegen target. Safe to call multiple times.
+    pub fn register() {
+        REGISTERED.get_or_init(|| {
+            register_target(Box::new(PytorchCodegen));
+        });
+    }
+}
+
+impl CodegenTarget for PytorchCodegen {
+    fn name(&self) -> &'static str {
+        "pytorch"
+    }
+
+    fn file_extension(&self) -> &'static str {
+        "pytorch.py"
+    }
+
+    fn generate(&self, graph: &Graph) -> Vec<GeneratedFile> {
+        let adj = build_adjacency(graph);
+        let sorted = topo_sort(graph);
+
+        // Build edge tensorName lookup
+        let mut _edge_tensor_name: HashMap<String, String> = HashMap::new();
+        for e in &graph.edges {
+            if let Some(ref name) = e.tensor_name {
+                _edge_tensor_name.insert(format!("{}->{}", e.from, e.to), name.clone());
+            }
+        }
+
+        // Named outputs: blockId → variableName
+        let mut named_outputs: HashMap<String, String> = HashMap::new();
+        for e in &graph.edges {
+            if let Some(ref name) = e.tensor_name {
+                named_outputs.insert(e.from.clone(), name.clone());
+            }
+        }
+
+        // __init__ lines
+        let mut init_lines: Vec<String> = Vec::new();
+        for b in &sorted {
+            if b.block_type == "Input" || b.block_type == "Output" {
+                continue;
+            }
+            let fn_ptr = get_block_codegen_with_fallback(&b.block_type);
+            let result = fn_ptr(b, &[], &[]);
+            if let Some(ref init) = result.init {
+                match init {
+                    CandleInitOrString::Plain(s) => {
+                        init_lines.push(indent_lines(s, "        "));
+                    }
+                    CandleInitOrString::Candle(_) => {
+                        // CandleInit is not expected for pytorch; skip silently
+                    }
+                }
+            }
+        }
+
+        // Input blocks → forward parameter names
+        let mut input_params: HashMap<String, String> = HashMap::new();
+        let mut forward_params: Vec<String> = Vec::new();
+        let mut unnamed_count: usize = 0;
+
+        for b in &sorted {
+            if b.block_type != "Input" {
+                continue;
+            }
+            if let Some(named) = named_outputs.get(&b.id) {
+                input_params.insert(b.id.clone(), named.clone());
+                forward_params.push(named.clone());
+            } else {
+                unnamed_count += 1;
+                let name = if unnamed_count == 1 {
+                    "x".to_string()
+                } else {
+                    format!("x{}", unnamed_count)
+                };
+                input_params.insert(b.id.clone(), name.clone());
+                forward_params.push(name);
+            }
+        }
+
+        // forward lines
+        let mut forward_lines: Vec<String> = Vec::new();
+        let mut block_output_var: HashMap<String, String> = HashMap::new();
+        let mut var_counter: usize = 0;
+
+        for b in &sorted {
+            let info = adj.get(&b.id).unwrap();
+            let input_vars: Vec<String> = info
+                .inputs
+                .iter()
+                .map(|in_id| {
+                    block_output_var
+                        .get(in_id)
+                        .cloned()
+                        .unwrap_or_else(|| "x".to_string())
+                })
+                .collect();
+
+            if b.block_type == "Input" {
+                let param_name = input_params
+                    .get(&b.id)
+                    .cloned()
+                    .unwrap_or_else(|| "x".to_string());
+                block_output_var.insert(b.id.clone(), param_name.clone());
+                let sc = shape_comment(&b.output_shapes);
+                if !sc.is_empty() {
+                    forward_lines.push(format!("        # {}: input{}", param_name, sc));
+                }
+                continue;
+            }
+
+            if b.block_type == "Output" {
+                let ret_var = input_vars.first().cloned().unwrap_or_else(|| "x".to_string());
+                let sc = shape_comment(&b.input_shapes);
+                let suffix = if sc.is_empty() {
+                    String::new()
+                } else {
+                    format!("  {}", sc.trim())
+                };
+                forward_lines.push(format!("        return {}{}", ret_var, suffix));
+                continue;
+            }
+
+            let fn_ptr = get_block_codegen_with_fallback(&b.block_type);
+            let out_count = b.output_shapes.len();
+            let output_vars: Vec<String>;
+
+            if out_count <= 1 {
+                if let Some(named) = named_outputs.get(&b.id) {
+                    output_vars = vec![named.clone()];
+                } else if info.outputs.len() == 1 {
+                    output_vars = vec!["x".to_string()];
+                } else {
+                    var_counter += 1;
+                    let name = if var_counter == 1 {
+                        "x".to_string()
+                    } else {
+                        format!("x{}", var_counter)
+                    };
+                    output_vars = vec![name];
+                }
+            } else {
+                var_counter += 1;
+                let base = if var_counter == 1 {
+                    "x".to_string()
+                } else {
+                    format!("x{}", var_counter)
+                };
+                output_vars = (0..out_count).map(|i| format!("{}_{}", base, i)).collect();
+            }
+
+            block_output_var.insert(b.id.clone(), output_vars[0].clone());
+
+            let result = fn_ptr(b, &input_vars, &output_vars);
+            let shape_ann = shape_comment(&b.output_shapes);
+            forward_lines.push(format!("        {}{}", result.forward, shape_ann));
+        }
+
+        // Class name from graph groups or default
+        let class_name = graph
+            .groups
+            .first()
+            .and_then(|g| g.path.first())
+            .map(|s| s.as_str())
+            .unwrap_or("Model");
+
+        // Forward signature
+        let forward_sig = if forward_params.is_empty() {
+            "x".to_string()
+        } else {
+            forward_params.join(", ")
+        };
+
+        let mut lines: Vec<String> = Vec::new();
+        lines.push("import torch".to_string());
+        lines.push("import torch.nn as nn".to_string());
+        lines.push("import torch.nn.functional as F".to_string());
+        lines.push(String::new());
+        lines.push(String::new());
+        lines.push(format!("class {}(nn.Module):", class_name));
+        lines.push("    def __init__(self):".to_string());
+        lines.push("        super().__init__()".to_string());
+        for l in &init_lines {
+            lines.push(l.clone());
+        }
+        lines.push(String::new());
+        lines.push(format!("    def forward(self, {}):", forward_sig));
+        for l in &forward_lines {
+            lines.push(l.clone());
+        }
+
+        let content = lines.join("\n") + "\n";
+
+        // Generate test file
+        let test_content = generate_pytorch_test(class_name, &sorted);
+
+        let mut files = vec![GeneratedFile {
+            path: format!("{}.pytorch.py", class_name),
+            content,
+        }];
+
+        if let Some(tc) = test_content {
+            files.push(GeneratedFile {
+                path: format!("{}.pytorch.test.py", class_name),
+                content: tc,
+            });
+        }
+
+        files
+    }
+}
+
+static REGISTERED: OnceLock<()> = OnceLock::new();
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ast::graph::{Block, Edge, Graph, Group};
+    use crate::ast::nodes::SourceLoc;
+    use crate::codegen::target::get_target;
+
+    fn dummy_loc() -> SourceLoc {
+        SourceLoc {
+            line: 0,
+            col: 0,
+            offset: 0,
+        }
+    }
+
+    fn make_linear_graph() -> Graph {
+        Graph {
+            blocks: vec![
+                Block {
+                    id: "inp".to_string(),
+                    block_type: "Input".to_string(),
+                    params: std::collections::HashMap::new(),
+                    input_shapes: vec![],
+                    output_shapes: vec![vec![1, 28, 28]],
+                    param_count: None,
+                    show_depth: None,
+                    loc: dummy_loc(),
+                },
+                Block {
+                    id: "out".to_string(),
+                    block_type: "Output".to_string(),
+                    params: std::collections::HashMap::new(),
+                    input_shapes: vec![vec![10]],
+                    output_shapes: vec![],
+                    param_count: None,
+                    show_depth: None,
+                    loc: dummy_loc(),
+                },
+            ],
+            edges: vec![Edge {
+                from: "inp".to_string(),
+                to: "out".to_string(),
+                tensor_name: None,
+                shape: None,
+            }],
+            groups: vec![],
+        }
+    }
+
+    #[test]
+    fn test_name_and_extension() {
+        let target = PytorchCodegen;
+        assert_eq!(target.name(), "pytorch");
+        assert_eq!(target.file_extension(), "pytorch.py");
+    }
+
+    #[test]
+    fn test_generate_simple_graph() {
+        let graph = make_linear_graph();
+        let target = PytorchCodegen;
+        let files = target.generate(&graph);
+        assert_eq!(files.len(), 2, "should generate model and test files");
+
+        // Model file
+        let model_file = &files[0];
+        assert!(model_file.path.ends_with(".pytorch.py"));
+        assert!(model_file.content.contains("class Model(nn.Module):"));
+        assert!(model_file.content.contains("def __init__(self)"));
+        assert!(model_file.content.contains("def forward(self, x)"));
+        assert!(model_file.content.contains("return x"));
+
+        // Test file
+        let test_file = &files[1];
+        assert!(test_file.path.ends_with(".pytorch.test.py"));
+        assert!(test_file.content.contains("def test_forward()"));
+        assert!(test_file.content.contains("torch.randn"));
+    }
+
+    #[test]
+    fn test_generate_with_group_name() {
+        let mut graph = make_linear_graph();
+        graph.groups = vec![Group {
+            path: vec!["MyModel".to_string()],
+            block_ids: vec![],
+        }];
+        let target = PytorchCodegen;
+        let files = target.generate(&graph);
+        assert!(files[0].content.contains("class MyModel(nn.Module):"));
+    }
+
+    #[test]
+    fn test_generate_no_test_when_no_shapes() {
+        let graph = Graph {
+            blocks: vec![
+                Block {
+                    id: "inp".to_string(),
+                    block_type: "Input".to_string(),
+                    params: std::collections::HashMap::new(),
+                    input_shapes: vec![],
+                    output_shapes: vec![],
+                    param_count: None,
+                    show_depth: None,
+                    loc: dummy_loc(),
+                },
+            ],
+            edges: vec![],
+            groups: vec![],
+        };
+        let target = PytorchCodegen;
+        let files = target.generate(&graph);
+        // Should still generate at least the model file
+        assert!(!files.is_empty());
+    }
+
+    #[test]
+    fn test_register_and_get() {
+        PytorchCodegen::register();
+        let target = get_target("pytorch");
+        assert!(target.is_some());
+        assert_eq!(target.unwrap().name(), "pytorch");
+    }
+}
+
