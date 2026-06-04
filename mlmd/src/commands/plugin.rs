@@ -69,12 +69,12 @@ fn list_plugins() -> anyhow::Result<()> {
     let all = mlmd_core::block::registry::all_block_names();
 
     #[cfg(feature = "dynamic-plugins")]
-    let dynamic = mlmd_core::plugin::adapter::all_dynamic_plugins();
+    let mut dynamic = mlmd_core::plugin::adapter::all_dynamic_plugins();
     #[cfg(not(feature = "dynamic-plugins"))]
-    let dynamic: Vec<(String, String)> = Vec::new();
+    let mut dynamic: Vec<(String, String)> = Vec::new();
 
     let dynamic_names: HashSet<&str> = dynamic.iter().map(|(n, _)| n.as_str()).collect();
-    let builtin: Vec<&String> = all
+    let mut builtin: Vec<&String> = all
         .iter()
         .filter(|n| !dynamic_names.contains(n.as_str()))
         .collect();
@@ -86,6 +86,9 @@ fn list_plugins() -> anyhow::Result<()> {
         dynamic.len()
     );
     println!();
+
+    builtin.sort();
+    dynamic.sort_by(|a, b| a.0.cmp(&b.0));
 
     if !builtin.is_empty() {
         println!("Builtin blocks:");
