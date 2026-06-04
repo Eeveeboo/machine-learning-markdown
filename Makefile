@@ -2,7 +2,7 @@ CARGO ?= cargo
 MLMD_RELEASE ?= target/release/mlmd
 
 .PHONY: help build build-release test test-python-examples test-rust-examples install install-zed \
-        install-vscode lint fmt clean examples generate-examples check
+        install-vscode lint fmt fmt-fix clean examples generate-examples check
 
 help:  ## Show this help
 	@awk -F '## ' '/^[a-zA-Z_-]+:.*##/ { printf "\033[36m%-20s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -38,6 +38,9 @@ lint:  ## Run clippy linting on the workspace
 
 fmt:  ## Check Rust formatting
 	$(CARGO) fmt --check
+
+fmt-fix:  ## Fix Rust formatting
+	$(CARGO) fmt
 
 clean:  ## Clean all build artifacts
 	@echo "Cleaning build artifacts..."

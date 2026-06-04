@@ -2,9 +2,7 @@
 // LSP diagnostics — validate MLMD documents and produce LSP diagnostics
 // ---------------------------------------------------------------------------
 
-use tower_lsp::lsp_types::{
-    Diagnostic, DiagnosticSeverity, Position, Range,
-};
+use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range};
 
 use crate::ast::nodes::SourceLoc;
 use crate::block::registry::build_block_registry;
@@ -30,9 +28,7 @@ pub fn source_loc_to_position(loc: &SourceLoc) -> Position {
 // ---------------------------------------------------------------------------
 
 /// Convert a `LintDiagnostic` from our lint module to an LSP `Diagnostic`.
-pub fn to_lsp_diagnostic(
-    d: &crate::lint::LintDiagnostic,
-) -> Diagnostic {
+pub fn to_lsp_diagnostic(d: &crate::lint::LintDiagnostic) -> Diagnostic {
     Diagnostic {
         range: Range {
             start: source_loc_to_position(&d.loc),

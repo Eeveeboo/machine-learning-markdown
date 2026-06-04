@@ -42,11 +42,7 @@ fn make_block_id(state: &mut BuildState, block_type: &str) -> String {
 
 /// Create a Block from a BlockDecl, push it to state, register in groups,
 /// and return the new block's id.
-fn add_block(
-    state: &mut BuildState,
-    decl: &BlockDecl,
-    group_stack: &[usize],
-) -> String {
+fn add_block(state: &mut BuildState, decl: &BlockDecl, group_stack: &[usize]) -> String {
     let id = make_block_id(state, &decl.block_type);
     let block = Block {
         id: id.clone(),
@@ -70,11 +66,7 @@ fn add_block(
 // Recursive AST walker
 // ---------------------------------------------------------------------------
 
-fn process_nodes(
-    state: &mut BuildState,
-    nodes: &[ASTNode],
-    group_stack: &mut Vec<usize>,
-) {
+fn process_nodes(state: &mut BuildState, nodes: &[ASTNode], group_stack: &mut Vec<usize>) {
     for node in nodes {
         match node {
             ASTNode::Comment(_) => {
@@ -351,12 +343,9 @@ mod tests {
     fn test_groups_with_nested_blocks() {
         let body = vec![
             ASTNode::Block(make_block_decl("Conv2d", vec![])),
-            ASTNode::Block(make_block_decl("ReLU", vec![]) ),
+            ASTNode::Block(make_block_decl("ReLU", vec![])),
         ];
-        let nodes = vec![ASTNode::Group(make_group(
-            vec!["Encoder"],
-            body,
-        ))];
+        let nodes = vec![ASTNode::Group(make_group(vec!["Encoder"], body))];
 
         let graph = build_graph(&nodes);
 
@@ -506,17 +495,30 @@ mod tests {
 
         // Verify chain order via edges
         let expected_chain = [
-            "Input_0", "Conv2d_0", "Tanh_0", "AvgPool_0",
-            "Conv2d_1", "Tanh_1", "AvgPool_1", "Flatten_0",
-            "Linear_0", "Tanh_2", "Linear_1", "Tanh_3", "Linear_2", "Softmax_0",
+            "Input_0",
+            "Conv2d_0",
+            "Tanh_0",
+            "AvgPool_0",
+            "Conv2d_1",
+            "Tanh_1",
+            "AvgPool_1",
+            "Flatten_0",
+            "Linear_0",
+            "Tanh_2",
+            "Linear_1",
+            "Tanh_3",
+            "Linear_2",
+            "Softmax_0",
         ];
         for (i, id) in expected_chain.iter().enumerate() {
             assert!(find_block(&graph, id).is_some(), "missing block {}", id);
             if i > 0 {
                 // Check edge from previous to this
                 assert!(
-                    graph.edges.iter().any(|e| e.from == expected_chain[i - 1]
-                        && e.to == *id),
+                    graph
+                        .edges
+                        .iter()
+                        .any(|e| e.from == expected_chain[i - 1] && e.to == *id),
                     "missing edge {} -> {}",
                     expected_chain[i - 1],
                     id
@@ -589,12 +591,27 @@ mod tests {
         assert_eq!(graph.edges.len(), 8);
 
         // Verify specific edges
-        assert!(graph.edges.iter().any(|e| e.from == "Input_0" && e.to == "Conv2d_0"));
-        assert!(graph.edges.iter().any(|e| e.from == "Conv2d_0" && e.to == "ReLU_0"));
+        assert!(graph
+            .edges
+            .iter()
+            .any(|e| e.from == "Input_0" && e.to == "Conv2d_0"));
+        assert!(graph
+            .edges
+            .iter()
+            .any(|e| e.from == "Conv2d_0" && e.to == "ReLU_0"));
         // Spurious edge between chains (this is how the TS graph builder works)
-        assert!(graph.edges.iter().any(|e| e.from == "ReLU_0" && e.to == "Input_1"));
-        assert!(graph.edges.iter().any(|e| e.from == "Input_1" && e.to == "Conv2d_1"));
-        assert!(graph.edges.iter().any(|e| e.from == "Conv2d_1" && e.to == "ReLU_1"));
+        assert!(graph
+            .edges
+            .iter()
+            .any(|e| e.from == "ReLU_0" && e.to == "Input_1"));
+        assert!(graph
+            .edges
+            .iter()
+            .any(|e| e.from == "Input_1" && e.to == "Conv2d_1"));
+        assert!(graph
+            .edges
+            .iter()
+            .any(|e| e.from == "Conv2d_1" && e.to == "ReLU_1"));
 
         // Join edges with tensor names
         let join_edge_skip = graph
@@ -614,12 +631,21 @@ mod tests {
         assert_eq!(join_edge_main.to, "Add_0");
 
         // Chain from Add to Output
-        assert!(graph.edges.iter().any(|e| e.from == "Add_0" && e.to == "Output_0"));
+        assert!(graph
+            .edges
+            .iter()
+            .any(|e| e.from == "Add_0" && e.to == "Output_0"));
 
         // No Input->Input edges
         assert!(!graph.edges.iter().any(|e| {
-            let from_is_input = graph.blocks.iter().any(|b| b.id == e.from && b.block_type == "Input");
-            let to_is_input = graph.blocks.iter().any(|b| b.id == e.to && b.block_type == "Input");
+            let from_is_input = graph
+                .blocks
+                .iter()
+                .any(|b| b.id == e.from && b.block_type == "Input");
+            let to_is_input = graph
+                .blocks
+                .iter()
+                .any(|b| b.id == e.to && b.block_type == "Input");
             from_is_input && to_is_input
         }));
 
@@ -647,14 +673,8 @@ mod tests {
             ASTNode::Block(make_block_decl("Conv2d", vec![])),
             ASTNode::Block(make_block_decl("ReLU", vec![])),
         ];
-        let outer_body = vec![ASTNode::Group(make_group(
-            vec!["Inner"],
-            inner_body,
-        ))];
-        let nodes = vec![ASTNode::Group(make_group(
-            vec!["Outer"],
-            outer_body,
-        ))];
+        let outer_body = vec![ASTNode::Group(make_group(vec!["Inner"], inner_body))];
+        let nodes = vec![ASTNode::Group(make_group(vec!["Outer"], outer_body))];
 
         let graph = build_graph(&nodes);
 
@@ -664,8 +684,16 @@ mod tests {
         assert_eq!(graph.edges.len(), 1);
 
         // Outer group should contain both blocks and the inner group's block_ids should contain both
-        let outer = graph.groups.iter().find(|g| g.path == vec!["Outer"]).unwrap();
-        let inner = graph.groups.iter().find(|g| g.path == vec!["Inner"]).unwrap();
+        let outer = graph
+            .groups
+            .iter()
+            .find(|g| g.path == vec!["Outer"])
+            .unwrap();
+        let inner = graph
+            .groups
+            .iter()
+            .find(|g| g.path == vec!["Inner"])
+            .unwrap();
 
         // Both blocks belong to inner group
         assert_eq!(inner.block_ids.len(), 2);

@@ -102,10 +102,10 @@ mod tests {
         // '€' (U+20AC) is 3 UTF-8 bytes but 1 UTF-16 unit
         let s = "a€z";
         // char_indices: (0,'a',1unit), (1,'€',1unit), (4,'z',1unit)
-        assert_eq!(utf16_offset_to_byte_index(s, 0), Some(0));   // before 'a'
-        assert_eq!(utf16_offset_to_byte_index(s, 1), Some(1));   // after 'a' → byte 1
-        assert_eq!(utf16_offset_to_byte_index(s, 2), Some(4));   // after '€' → byte 4
-        assert_eq!(utf16_offset_to_byte_index(s, 3), Some(5));   // after 'z' → byte 5 (end)
+        assert_eq!(utf16_offset_to_byte_index(s, 0), Some(0)); // before 'a'
+        assert_eq!(utf16_offset_to_byte_index(s, 1), Some(1)); // after 'a' → byte 1
+        assert_eq!(utf16_offset_to_byte_index(s, 2), Some(4)); // after '€' → byte 4
+        assert_eq!(utf16_offset_to_byte_index(s, 3), Some(5)); // after 'z' → byte 5 (end)
         assert_eq!(utf16_offset_to_byte_index(s, 4), None);
     }
 
@@ -124,11 +124,11 @@ mod tests {
         // 😀 (U+1F600) = 4 UTF-8 bytes, 2 UTF-16 units (surrogate pair)
         let s = "a😀z";
         // char_indices: (0,'a',1), (1,'😀',2), (5,'z',1)
-        assert_eq!(utf16_offset_to_byte_index(s, 0), Some(0));   // before 'a'
-        assert_eq!(utf16_offset_to_byte_index(s, 1), Some(1));   // after 'a'
-        assert_eq!(utf16_offset_to_byte_index(s, 2), Some(1));   // middle of surrogate pair → snaps to emoji start
-        assert_eq!(utf16_offset_to_byte_index(s, 3), Some(5));   // after emoji → byte 5
-        assert_eq!(utf16_offset_to_byte_index(s, 4), Some(6));   // after 'z' → byte 6 (end)
+        assert_eq!(utf16_offset_to_byte_index(s, 0), Some(0)); // before 'a'
+        assert_eq!(utf16_offset_to_byte_index(s, 1), Some(1)); // after 'a'
+        assert_eq!(utf16_offset_to_byte_index(s, 2), Some(1)); // middle of surrogate pair → snaps to emoji start
+        assert_eq!(utf16_offset_to_byte_index(s, 3), Some(5)); // after emoji → byte 5
+        assert_eq!(utf16_offset_to_byte_index(s, 4), Some(6)); // after 'z' → byte 6 (end)
         assert_eq!(utf16_offset_to_byte_index(s, 5), None);
     }
 
@@ -140,8 +140,14 @@ mod tests {
 
     #[test]
     fn test_word_at_position_ascii() {
-        assert_eq!(word_at_position("hello world", 0), Some("hello".to_string()));
-        assert_eq!(word_at_position("hello world", 6), Some("world".to_string()));
+        assert_eq!(
+            word_at_position("hello world", 0),
+            Some("hello".to_string())
+        );
+        assert_eq!(
+            word_at_position("hello world", 6),
+            Some("world".to_string())
+        );
         assert_eq!(word_at_position("hello world", 5), None); // space
     }
 

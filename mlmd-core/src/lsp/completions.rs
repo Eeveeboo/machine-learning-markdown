@@ -91,7 +91,10 @@ fn detect_context(source: &str, line: u32, character: u32) -> CompletionContext 
         .map(|(_, l)| format!("{}\n", l))
         .chain(std::iter::once({
             let current_line = lines.get(line_idx).unwrap_or(&"");
-            current_line.chars().take(character as usize).collect::<String>()
+            current_line
+                .chars()
+                .take(character as usize)
+                .collect::<String>()
         }))
         .collect();
 
@@ -125,7 +128,10 @@ fn detect_context(source: &str, line: u32, character: u32) -> CompletionContext 
     if trimmed.is_empty() || before_cursor.ends_with("->") || before_cursor.contains("->") {
         let after_arrow = before_cursor.rfind("->").map(|i| &before_cursor[i + 2..]);
         if let Some(after) = after_arrow {
-            if after.chars().all(|c| c.is_whitespace() || c.is_alphanumeric() || c == '_') {
+            if after
+                .chars()
+                .all(|c| c.is_whitespace() || c.is_alphanumeric() || c == '_')
+            {
                 return CompletionContext::BlockType;
             }
         } else if trimmed.is_empty() {
@@ -159,7 +165,9 @@ fn extract_block_type_before_paren(before_paren: &str) -> Option<String> {
 fn is_valid_ident(s: &str) -> bool {
     !s.is_empty()
         && s.chars().all(|c| c.is_alphanumeric() || c == '_')
-        && s.chars().next().map_or(false, |c| c.is_alphabetic() || c == '_')
+        && s.chars()
+            .next()
+            .map_or(false, |c| c.is_alphabetic() || c == '_')
 }
 
 // ---------------------------------------------------------------------------

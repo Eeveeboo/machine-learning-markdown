@@ -2,9 +2,7 @@
 // LSP goto-definition — jump from tensor reference to its declaration
 // ---------------------------------------------------------------------------
 
-use tower_lsp::lsp_types::{
-    GotoDefinitionResponse, Location, Position, Range, Url,
-};
+use tower_lsp::lsp_types::{GotoDefinitionResponse, Location, Position, Range, Url};
 
 use crate::lsp::word_at_position;
 

@@ -216,10 +216,7 @@ impl<'a> Parser<'a> {
 
         if self.eat(TokenType::Equals).is_none() {
             self.errors.push(ParseError::new(
-                format!(
-                    "Expected = after param name \"{}\"",
-                    name_tok.value
-                ),
+                format!("Expected = after param name \"{}\"", name_tok.value),
                 self.peek().loc.clone(),
             ));
             return None;
@@ -629,10 +626,7 @@ impl<'a> Parser<'a> {
 
         // Unknown line start — skip
         self.errors.push(ParseError::new(
-            format!(
-                "Unexpected token {:?} at start of line",
-                t.token_type
-            ),
+            format!("Unexpected token {:?} at start of line", t.token_type),
             t.loc.clone(),
         ));
         self.skip_to_next_line();
@@ -1149,7 +1143,8 @@ mod tests {
 
     #[test]
     fn test_lenet_style_multi_line_chain() {
-        let src = "Input (shape=(1,28,28))\n    -> Conv2d (kernel_size=5, filters=6)\n    -> Tanh ()";
+        let src =
+            "Input (shape=(1,28,28))\n    -> Conv2d (kernel_size=5, filters=6)\n    -> Tanh ()";
         let result = parse_source(src);
         assert_eq!(result.errors.len(), 0);
         assert_eq!(result.nodes.len(), 3);

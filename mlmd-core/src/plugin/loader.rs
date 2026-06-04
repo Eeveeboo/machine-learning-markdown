@@ -29,10 +29,13 @@ impl DynamicPlugin {
     /// static `PluginFFI` struct.
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, String> {
         unsafe {
-            let lib =
-                Arc::new(Library::new(path.as_ref()).map_err(|e| {
-                    format!("Failed to load library '{}': {}", path.as_ref().display(), e)
-                })?);
+            let lib = Arc::new(Library::new(path.as_ref()).map_err(|e| {
+                format!(
+                    "Failed to load library '{}': {}",
+                    path.as_ref().display(),
+                    e
+                )
+            })?);
 
             let ffi: Symbol<*const PluginFFI> = lib
                 .get(b"MLMD_PLUGIN\0")
@@ -120,10 +123,8 @@ impl DynamicPlugin {
         inputs: &[Shape],
         params: &HashMap<String, ParamValue>,
     ) -> Option<usize> {
-        let inputs_json =
-            serde_json::to_string(inputs).unwrap_or_default();
-        let params_json =
-            serde_json::to_string(params).unwrap_or_default();
+        let inputs_json = serde_json::to_string(inputs).unwrap_or_default();
+        let params_json = serde_json::to_string(params).unwrap_or_default();
 
         let inputs_c = crate::plugin::ffi::to_c_string(&inputs_json);
         let params_c = crate::plugin::ffi::to_c_string(&params_json);

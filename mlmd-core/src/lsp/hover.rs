@@ -2,9 +2,7 @@
 // LSP hover — show block definition info when hovering over a block name
 // ---------------------------------------------------------------------------
 
-use tower_lsp::lsp_types::{
-    Hover, HoverContents, MarkupContent, MarkupKind, Position,
-};
+use tower_lsp::lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind, Position};
 
 use crate::block::registry::lookup_block;
 use crate::lsp::word_at_position;
@@ -41,11 +39,7 @@ pub fn get_hover(doc_source: &str, position: &Position) -> Option<Hover> {
         param_lines.join("\n")
     };
 
-    let contents = format!(
-        "**{}**\n```\nparams:\n{}\n```",
-        def.name(),
-        param_section
-    );
+    let contents = format!("**{}**\n```\nparams:\n{}\n```", def.name(), param_section);
 
     Some(Hover {
         contents: HoverContents::Markup(MarkupContent {

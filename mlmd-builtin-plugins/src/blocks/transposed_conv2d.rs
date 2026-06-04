@@ -71,14 +71,14 @@ impl BlockDef for TransposedConv2dBlockDef {
         let k = get_num(params, "kernel").ok_or("Missing kernel")? as usize;
         let s = get_num(params, "stride").unwrap_or(1.0) as usize;
         let p = get_num(params, "padding").unwrap_or(0.0) as usize;
-        Ok(vec![vec![f, conv_transpose_output_size(h, k, p, s), conv_transpose_output_size(w, k, p, s)]])
+        Ok(vec![vec![
+            f,
+            conv_transpose_output_size(h, k, p, s),
+            conv_transpose_output_size(w, k, p, s),
+        ]])
     }
 
-    fn param_count(
-        &self,
-        inputs: &[Shape],
-        params: &HashMap<String, ParamValue>,
-    ) -> Option<usize> {
+    fn param_count(&self, inputs: &[Shape], params: &HashMap<String, ParamValue>) -> Option<usize> {
         let in_c = if !inputs.is_empty() && !inputs[0].is_empty() {
             inputs[0][0]
         } else {
@@ -196,7 +196,11 @@ fn keras_codegen(
     let filters = get_filters(block);
     let kernel = get_kernel(block);
     let stride = get_stride(block);
-    let padding_str = if get_padding(block) == 0 { "valid" } else { "same" };
+    let padding_str = if get_padding(block) == 0 {
+        "valid"
+    } else {
+        "same"
+    };
     BlockCodegenResult {
         init: None,
         forward: format!(
@@ -241,9 +245,39 @@ mod tests {
         assert_eq!(def.name(), "TransposedConv2d");
 
         let mut p = HashMap::new();
-        p.insert("filters".to_string(), ParamValue::Number(Box::new(NumberVal::new(32.0, SourceLoc { line: 0, col: 0, offset: 0 }))));
-        p.insert("kernel".to_string(), ParamValue::Number(Box::new(NumberVal::new(3.0, SourceLoc { line: 0, col: 0, offset: 0 }))));
-        p.insert("stride".to_string(), ParamValue::Number(Box::new(NumberVal::new(2.0, SourceLoc { line: 0, col: 0, offset: 0 }))));
+        p.insert(
+            "filters".to_string(),
+            ParamValue::Number(Box::new(NumberVal::new(
+                32.0,
+                SourceLoc {
+                    line: 0,
+                    col: 0,
+                    offset: 0,
+                },
+            ))),
+        );
+        p.insert(
+            "kernel".to_string(),
+            ParamValue::Number(Box::new(NumberVal::new(
+                3.0,
+                SourceLoc {
+                    line: 0,
+                    col: 0,
+                    offset: 0,
+                },
+            ))),
+        );
+        p.insert(
+            "stride".to_string(),
+            ParamValue::Number(Box::new(NumberVal::new(
+                2.0,
+                SourceLoc {
+                    line: 0,
+                    col: 0,
+                    offset: 0,
+                },
+            ))),
+        );
         let shapes = def.infer_shape(&[vec![3, 8, 8]], &p).unwrap();
         // (8-1)*2 - 0 + 3 = 17
         assert_eq!(shapes, vec![vec![32, 17, 17]]);

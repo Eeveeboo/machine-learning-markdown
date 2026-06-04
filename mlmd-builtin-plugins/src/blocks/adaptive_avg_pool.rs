@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 use mlmd_core::types::*;
 
-use crate::helpers::{get_num_list, get_num};
+use crate::helpers::{get_num, get_num_list};
 
 // ---------------------------------------------------------------------------
 // BlockDef for shape inference
@@ -170,7 +170,14 @@ mod tests {
         let mut p = HashMap::new();
         p.insert(
             "size".to_string(),
-            ParamValue::Shape(Box::new(ShapeVal::new(vec![7, 7], SourceLoc { line: 0, col: 0, offset: 0 }))),
+            ParamValue::Shape(Box::new(ShapeVal::new(
+                vec![7, 7],
+                SourceLoc {
+                    line: 0,
+                    col: 0,
+                    offset: 0,
+                },
+            ))),
         );
         let shapes = def.infer_shape(&[vec![3, 224, 224]], &p).unwrap();
         assert_eq!(shapes, vec![vec![3, 7, 7]]);

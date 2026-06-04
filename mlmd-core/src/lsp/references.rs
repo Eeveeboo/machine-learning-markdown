@@ -14,11 +14,7 @@ use crate::lsp::word_at_position;
 ///
 /// Searches all `[...]` bracket groups (declarations and join patterns)
 /// for occurrences of the tensor name under the cursor.
-pub fn get_references(
-    doc_source: &str,
-    uri: &Url,
-    position: &Position,
-) -> Vec<Location> {
+pub fn get_references(doc_source: &str, uri: &Url, position: &Position) -> Vec<Location> {
     let lines: Vec<&str> = doc_source.lines().collect();
     let line = match lines.get(position.line as usize) {
         Some(l) => l,

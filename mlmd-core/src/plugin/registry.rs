@@ -14,9 +14,8 @@ static PLUGIN_REGISTRY: LazyLock<Mutex<HashMap<String, Box<dyn BlockPlugin>>>> =
 
 /// Per-block-per-target codegen function registry:
 /// block type -> target -> codegen function
-static CODGEGEN_REGISTRY: LazyLock<
-    Mutex<HashMap<String, HashMap<String, BlockCodegenFn>>>,
-> = LazyLock::new(|| Mutex::new(HashMap::new()));
+static CODGEGEN_REGISTRY: LazyLock<Mutex<HashMap<String, HashMap<String, BlockCodegenFn>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 // ---------------------------------------------------------------------------
 // Plugin guard for safe access

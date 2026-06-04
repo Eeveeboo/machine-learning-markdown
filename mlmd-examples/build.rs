@@ -5,10 +5,7 @@ use std::path::Path;
 fn main() {
     // The manifest directory is mlmd-examples/
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-    let examples_dir = Path::new(&manifest_dir)
-        .parent()
-        .unwrap()
-        .join("examples");
+    let examples_dir = Path::new(&manifest_dir).parent().unwrap().join("examples");
 
     // Canonicalize to absolute path
     let examples_dir =

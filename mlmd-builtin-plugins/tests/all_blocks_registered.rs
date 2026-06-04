@@ -10,9 +10,7 @@
 
 use std::collections::HashMap;
 
-use mlmd_core::ast::nodes::{
-    NumberVal, ParamValue, ShapeVal, SourceLoc,
-};
+use mlmd_core::ast::nodes::{NumberVal, ParamValue, ShapeVal, SourceLoc};
 use mlmd_core::block::registry::lookup_block;
 
 // ---------------------------------------------------------------------------
@@ -52,16 +50,49 @@ fn test_all_43_blocks_registered() {
     mlmd_builtin_plugins::register_all();
 
     let expected_blocks = [
-        "Input", "Output", "Linear", "Embedding",
-        "Conv1d", "Conv2d", "Conv3d", "TransposedConv2d",
-        "ReLU", "LeakyReLU", "PReLU", "ELU", "SELU", "GELU", "SiLU",
-        "Sigmoid", "Tanh", "Softmax",
-        "BatchNorm", "LayerNorm", "GroupNorm", "InstanceNorm",
-        "MaxPool", "AvgPool", "GlobalAvgPool", "AdaptiveAvgPool",
-        "LSTM", "GRU", "RNN",
-        "Dropout", "Flatten", "Reshape", "Pad",
-        "Add", "Mul", "Sub", "Div", "Concat", "MatMul",
-        "Split", "Repeat", "Map", "Gather",
+        "Input",
+        "Output",
+        "Linear",
+        "Embedding",
+        "Conv1d",
+        "Conv2d",
+        "Conv3d",
+        "TransposedConv2d",
+        "ReLU",
+        "LeakyReLU",
+        "PReLU",
+        "ELU",
+        "SELU",
+        "GELU",
+        "SiLU",
+        "Sigmoid",
+        "Tanh",
+        "Softmax",
+        "BatchNorm",
+        "LayerNorm",
+        "GroupNorm",
+        "InstanceNorm",
+        "MaxPool",
+        "AvgPool",
+        "GlobalAvgPool",
+        "AdaptiveAvgPool",
+        "LSTM",
+        "GRU",
+        "RNN",
+        "Dropout",
+        "Flatten",
+        "Reshape",
+        "Pad",
+        "Add",
+        "Mul",
+        "Sub",
+        "Div",
+        "Concat",
+        "MatMul",
+        "Split",
+        "Repeat",
+        "Map",
+        "Gather",
     ];
 
     assert_eq!(
@@ -106,7 +137,11 @@ fn test_conv2d_shape_inference() {
         let p = def.param_count(&[vec![3, 32, 32]], &params);
         (r, p)
     };
-    assert!(result.is_ok(), "Conv2d infer_shape failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "Conv2d infer_shape failed: {:?}",
+        result.err()
+    );
     assert_eq!(result.unwrap()[0], vec![32, 30, 30]);
 
     // param_count = in_c * filters * k * k + filters
@@ -125,7 +160,11 @@ fn test_linear_shape_inference() {
         let p = def.param_count(&[vec![3, 64]], &params);
         (r, p)
     };
-    assert!(result.is_ok(), "Linear infer_shape failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "Linear infer_shape failed: {:?}",
+        result.err()
+    );
     assert_eq!(result.unwrap()[0], vec![3, 10]);
     // param_count = in_features * out_features + out_features
     assert_eq!(pc, Some(64 * 10 + 10));
@@ -168,7 +207,11 @@ fn test_lstm_shape_inference() {
         let def = lookup_block("LSTM").unwrap();
         def.infer_shape(&[vec![10, 64]], &params)
     };
-    assert!(result.is_ok(), "LSTM infer_shape failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "LSTM infer_shape failed: {:?}",
+        result.err()
+    );
     let shapes = result.unwrap();
     assert_eq!(shapes.len(), 2, "LSTM should produce 2 output shapes");
     assert_eq!(shapes[0], vec![10, 128]);
@@ -186,7 +229,11 @@ fn test_input_shape_inference() {
         let def = lookup_block("Input").unwrap();
         def.infer_shape(&[], &params)
     };
-    assert!(result.is_ok(), "Input infer_shape failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "Input infer_shape failed: {:?}",
+        result.err()
+    );
     assert_eq!(result.unwrap()[0], vec![3, 224, 224]);
 
     // Error on missing shape param
@@ -209,7 +256,11 @@ fn test_embedding_shape_inference() {
         let p = def.param_count(&[], &params);
         (r, p)
     };
-    assert!(result.is_ok(), "Embedding infer_shape failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "Embedding infer_shape failed: {:?}",
+        result.err()
+    );
     assert_eq!(result.unwrap()[0], vec![10, 128]);
     assert_eq!(pc, Some(1000 * 128));
 }
@@ -224,7 +275,11 @@ fn test_split_shape_inference() {
         let def = lookup_block("Split").unwrap();
         def.infer_shape(&[vec![8, 224, 224]], &params)
     };
-    assert!(result.is_ok(), "Split infer_shape failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "Split infer_shape failed: {:?}",
+        result.err()
+    );
     let shapes = result.unwrap();
     assert_eq!(shapes.len(), 4);
     assert_eq!(shapes[0], vec![2, 224, 224]);
@@ -240,7 +295,11 @@ fn test_concat_shape_inference() {
         let p = def.param_count(&[], &HashMap::new());
         (r, p)
     };
-    assert!(result.is_ok(), "Concat infer_shape failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "Concat infer_shape failed: {:?}",
+        result.err()
+    );
     assert_eq!(result.unwrap()[0], vec![3, 336, 224]);
     assert_eq!(pc, Some(0));
 
@@ -261,7 +320,11 @@ fn test_matmul_shape_inference() {
         let p = def.param_count(&[], &HashMap::new());
         (r, p)
     };
-    assert!(result.is_ok(), "MatMul infer_shape failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "MatMul infer_shape failed: {:?}",
+        result.err()
+    );
     assert_eq!(result.unwrap()[0], vec![3, 5]);
     assert_eq!(pc, Some(0));
 
@@ -282,7 +345,11 @@ fn test_max_pool_shape_inference() {
         let def = lookup_block("MaxPool").unwrap();
         def.infer_shape(&[vec![3, 224, 224]], &params)
     };
-    assert!(result.is_ok(), "MaxPool infer_shape failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "MaxPool infer_shape failed: {:?}",
+        result.err()
+    );
     assert_eq!(result.unwrap()[0], vec![3, 112, 112]);
 }
 
@@ -296,7 +363,11 @@ fn test_flatten_shape_inference() {
         let p = def.param_count(&[], &HashMap::new());
         (r, p)
     };
-    assert!(result.is_ok(), "Flatten infer_shape failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "Flatten infer_shape failed: {:?}",
+        result.err()
+    );
     assert_eq!(result.unwrap()[0], vec![3 * 224 * 224]);
     assert_eq!(pc, Some(0));
 
@@ -315,7 +386,11 @@ fn test_dropout_shape_inference() {
         let def = lookup_block("Dropout").unwrap();
         def.infer_shape(&[vec![3, 224, 224]], &HashMap::new())
     };
-    assert!(result.is_ok(), "Dropout infer_shape failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "Dropout infer_shape failed: {:?}",
+        result.err()
+    );
     assert_eq!(result.unwrap()[0], vec![3, 224, 224]);
 
     let err_result = {
@@ -335,7 +410,11 @@ fn test_batch_norm_shape_inference() {
         let p = def.param_count(&[vec![3, 224, 224]], &HashMap::new());
         (r, p)
     };
-    assert!(result.is_ok(), "BatchNorm infer_shape failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "BatchNorm infer_shape failed: {:?}",
+        result.err()
+    );
     assert_eq!(result.unwrap()[0], vec![3, 224, 224]);
     // param_count = num_features * 2 (num_features from input[0][0] = 3)
     assert_eq!(pc, Some(6));
@@ -357,7 +436,11 @@ fn test_layer_norm_shape_inference() {
         let p = def.param_count(&[vec![3, 224, 224]], &HashMap::new());
         (r, p)
     };
-    assert!(result.is_ok(), "LayerNorm infer_shape failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "LayerNorm infer_shape failed: {:?}",
+        result.err()
+    );
     assert_eq!(result.unwrap()[0], vec![3, 224, 224]);
     // param_count = last_dim * 2 = 224 * 2
     assert_eq!(pc, Some(224 * 2));
@@ -371,7 +454,11 @@ fn test_global_avg_pool_shape_inference() {
         let def = lookup_block("GlobalAvgPool").unwrap();
         def.infer_shape(&[vec![3, 224, 224]], &HashMap::new())
     };
-    assert!(result.is_ok(), "GlobalAvgPool infer_shape failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "GlobalAvgPool infer_shape failed: {:?}",
+        result.err()
+    );
     assert_eq!(result.unwrap()[0], vec![3, 1, 1]);
 
     let err_result = {
@@ -392,7 +479,11 @@ fn test_reshape_shape_inference() {
         let def = lookup_block("Reshape").unwrap();
         def.infer_shape(&[vec![784]], &params)
     };
-    assert!(result.is_ok(), "Reshape infer_shape failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "Reshape infer_shape failed: {:?}",
+        result.err()
+    );
     assert_eq!(result.unwrap()[0], vec![1, 28, 28]);
 
     let err_result = {
@@ -434,7 +525,11 @@ fn test_adaptive_avg_pool_shape_inference() {
         let def = lookup_block("AdaptiveAvgPool").unwrap();
         def.infer_shape(&[vec![3, 224, 224]], &params)
     };
-    assert!(result.is_ok(), "AdaptiveAvgPool infer_shape failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "AdaptiveAvgPool infer_shape failed: {:?}",
+        result.err()
+    );
     assert_eq!(result.unwrap()[0], vec![3, 7, 7]);
 
     let err_result = {
@@ -576,7 +671,11 @@ fn test_conv1d_shape_inference() {
         let def = lookup_block("Conv1d").unwrap();
         def.infer_shape(&[vec![3, 32]], &params)
     };
-    assert!(result.is_ok(), "Conv1d infer_shape failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "Conv1d infer_shape failed: {:?}",
+        result.err()
+    );
     assert_eq!(result.unwrap()[0], vec![16, 30]);
 }
 
@@ -613,7 +712,14 @@ fn test_all_activations_are_passthrough() {
     mlmd_builtin_plugins::register_all();
 
     let activations = [
-        "LeakyReLU", "PReLU", "ELU", "SELU", "GELU", "SiLU", "Sigmoid", "Tanh",
+        "LeakyReLU",
+        "PReLU",
+        "ELU",
+        "SELU",
+        "GELU",
+        "SiLU",
+        "Sigmoid",
+        "Tanh",
     ];
     for name in &activations {
         let result = {
@@ -689,7 +795,11 @@ fn test_output_shape_inference() {
         let e = def.infer_shape(&[], &HashMap::new());
         (r, p, e)
     };
-    assert!(result.is_ok(), "Output infer_shape failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "Output infer_shape failed: {:?}",
+        result.err()
+    );
     assert_eq!(result.unwrap()[0], vec![10]);
     assert_eq!(pc, Some(0));
     assert!(err_result.is_err());
@@ -708,6 +818,10 @@ fn test_conv3d_shape_inference() {
         let def = lookup_block("Conv3d").unwrap();
         def.infer_shape(&[vec![3, 16, 32, 32]], &params)
     };
-    assert!(result.is_ok(), "Conv3d infer_shape failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "Conv3d infer_shape failed: {:?}",
+        result.err()
+    );
     assert_eq!(result.unwrap()[0], vec![16, 14, 30, 30]);
 }

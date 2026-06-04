@@ -93,7 +93,11 @@ pub fn tokenize(source: &str) -> Vec<Token> {
         // Newline handling — collapse consecutive whitespace lines
         // ------------------------------------------------------------------
         if ch == b'\n' || ch == b'\r' {
-            let loc = SourceLoc { line, col, offset: pos };
+            let loc = SourceLoc {
+                line,
+                col,
+                offset: pos,
+            };
 
             // Consume ALL consecutive \n, \r, space, tab
             while pos < len {
@@ -124,7 +128,11 @@ pub fn tokenize(source: &str) -> Vec<Token> {
         // Comment
         // ------------------------------------------------------------------
         if ch == b'#' {
-            let loc = SourceLoc { line, col, offset: pos };
+            let loc = SourceLoc {
+                line,
+                col,
+                offset: pos,
+            };
             pos += 1; // skip '#'
             col += 1;
 
@@ -144,21 +152,33 @@ pub fn tokenize(source: &str) -> Vec<Token> {
         if pos + 1 < len {
             let two = [src[pos], src[pos + 1]];
             if two == [b'-', b'>'] {
-                let loc = SourceLoc { line, col, offset: pos };
+                let loc = SourceLoc {
+                    line,
+                    col,
+                    offset: pos,
+                };
                 pos += 2;
                 col += 2;
                 tokens.push(Token::new(TokenType::Arrow, "->", loc));
                 continue;
             }
             if two == [b'[', b'['] {
-                let loc = SourceLoc { line, col, offset: pos };
+                let loc = SourceLoc {
+                    line,
+                    col,
+                    offset: pos,
+                };
                 pos += 2;
                 col += 2;
                 tokens.push(Token::new(TokenType::GroupOpen, "[[", loc));
                 continue;
             }
             if two == [b']', b']'] {
-                let loc = SourceLoc { line, col, offset: pos };
+                let loc = SourceLoc {
+                    line,
+                    col,
+                    offset: pos,
+                };
                 pos += 2;
                 col += 2;
                 tokens.push(Token::new(TokenType::GroupClose, "]]", loc));
@@ -172,7 +192,11 @@ pub fn tokenize(source: &str) -> Vec<Token> {
         // Capture the source location *before* consuming anything so that
         // every branch below can use the same `loc`.
         // ------------------------------------------------------------------
-        let loc = SourceLoc { line, col, offset: pos };
+        let loc = SourceLoc {
+            line,
+            col,
+            offset: pos,
+        };
 
         // Single-char tokens
         if ch == b'[' {
@@ -318,7 +342,11 @@ pub fn tokenize(source: &str) -> Vec<Token> {
     tokens.push(Token::new(
         TokenType::Eof,
         "",
-        SourceLoc { line, col, offset: pos },
+        SourceLoc {
+            line,
+            col,
+            offset: pos,
+        },
     ));
 
     tokens
@@ -772,44 +800,56 @@ mod tests {
     #[test]
     fn test_types_in_order() {
         let tokens = tokenize("Conv2d(kernel=5)");
-        let types: Vec<&str> = tokens.iter().map(|t| match t.token_type {
-            TokenType::Ident => "IDENT",
-            TokenType::Number => "NUMBER",
-            TokenType::String => "STRING",
-            TokenType::Bool => "BOOL",
-            TokenType::Arrow => "ARROW",
-            TokenType::LBracket => "LBRACKET",
-            TokenType::RBracket => "RBRACKET",
-            TokenType::LParen => "LPAREN",
-            TokenType::RParen => "RPAREN",
-            TokenType::Comma => "COMMA",
-            TokenType::Equals => "EQUALS",
-            TokenType::Gt => "GT",
-            TokenType::GroupOpen => "GROUP_OPEN",
-            TokenType::GroupClose => "GROUP_CLOSE",
-            TokenType::Newline => "NEWLINE",
-            TokenType::Comment => "COMMENT",
-            TokenType::Eof => "EOF",
-        }).collect();
-        assert_eq!(types, &["IDENT", "LPAREN", "IDENT", "EQUALS", "NUMBER", "RPAREN", "EOF"]);
+        let types: Vec<&str> = tokens
+            .iter()
+            .map(|t| match t.token_type {
+                TokenType::Ident => "IDENT",
+                TokenType::Number => "NUMBER",
+                TokenType::String => "STRING",
+                TokenType::Bool => "BOOL",
+                TokenType::Arrow => "ARROW",
+                TokenType::LBracket => "LBRACKET",
+                TokenType::RBracket => "RBRACKET",
+                TokenType::LParen => "LPAREN",
+                TokenType::RParen => "RPAREN",
+                TokenType::Comma => "COMMA",
+                TokenType::Equals => "EQUALS",
+                TokenType::Gt => "GT",
+                TokenType::GroupOpen => "GROUP_OPEN",
+                TokenType::GroupClose => "GROUP_CLOSE",
+                TokenType::Newline => "NEWLINE",
+                TokenType::Comment => "COMMENT",
+                TokenType::Eof => "EOF",
+            })
+            .collect();
+        assert_eq!(
+            types,
+            &["IDENT", "LPAREN", "IDENT", "EQUALS", "NUMBER", "RPAREN", "EOF"]
+        );
     }
 
     #[test]
     fn test_arrow_chain_types() {
         let tokens = tokenize("Input -> Linear(out=10) -> Output");
-        let types: Vec<&str> = tokens.iter().map(|t| match t.token_type {
-            TokenType::Ident => "IDENT",
-            TokenType::Number => "NUMBER",
-            TokenType::Arrow => "ARROW",
-            TokenType::LParen => "LPAREN",
-            TokenType::RParen => "RPAREN",
-            TokenType::Equals => "EQUALS",
-            TokenType::Eof => "EOF",
-            _ => panic!("unexpected token type"),
-        }).collect();
+        let types: Vec<&str> = tokens
+            .iter()
+            .map(|t| match t.token_type {
+                TokenType::Ident => "IDENT",
+                TokenType::Number => "NUMBER",
+                TokenType::Arrow => "ARROW",
+                TokenType::LParen => "LPAREN",
+                TokenType::RParen => "RPAREN",
+                TokenType::Equals => "EQUALS",
+                TokenType::Eof => "EOF",
+                _ => panic!("unexpected token type"),
+            })
+            .collect();
         assert_eq!(
             types,
-            &["IDENT", "ARROW", "IDENT", "LPAREN", "IDENT", "EQUALS", "NUMBER", "RPAREN", "ARROW", "IDENT", "EOF"]
+            &[
+                "IDENT", "ARROW", "IDENT", "LPAREN", "IDENT", "EQUALS", "NUMBER", "RPAREN",
+                "ARROW", "IDENT", "EOF"
+            ]
         );
     }
 }

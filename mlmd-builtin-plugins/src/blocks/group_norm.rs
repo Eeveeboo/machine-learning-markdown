@@ -171,6 +171,9 @@ mod tests {
         assert_eq!(shapes, vec![vec![6, 224, 224]]);
 
         assert!(def.infer_shape(&[], &HashMap::new()).is_err());
-        assert_eq!(def.param_count(&[vec![6, 224, 224]], &HashMap::new()), Some(12));
+        assert_eq!(
+            def.param_count(&[vec![6, 224, 224]], &HashMap::new()),
+            Some(12)
+        );
     }
 }

@@ -45,10 +45,7 @@ pub fn run(args: VisualizeArgs) -> anyhow::Result<()> {
     let shape_result = infer_shapes(&graph, &registry);
 
     for err in &shape_result.errors {
-        eprintln!(
-            "Shape error in block '{}': {}",
-            err.block_id, err.message
-        );
+        eprintln!("Shape error in block '{}': {}", err.block_id, err.message);
     }
 
     if shape_result.graph.blocks.is_empty() {

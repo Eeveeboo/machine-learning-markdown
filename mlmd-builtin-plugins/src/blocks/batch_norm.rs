@@ -44,11 +44,7 @@ impl BlockDef for BatchNormBlockDef {
         Ok(vec![inputs[0].clone()])
     }
 
-    fn param_count(
-        &self,
-        inputs: &[Shape],
-        params: &HashMap<String, ParamValue>,
-    ) -> Option<usize> {
+    fn param_count(&self, inputs: &[Shape], params: &HashMap<String, ParamValue>) -> Option<usize> {
         let nf = if let Some(v) = get_num(params, "num_features") {
             v as usize
         } else if !inputs.is_empty() && !inputs[0].is_empty() {
@@ -175,6 +171,9 @@ mod tests {
         assert_eq!(shapes, vec![vec![3, 224, 224]]);
 
         assert!(def.infer_shape(&[], &HashMap::new()).is_err());
-        assert_eq!(def.param_count(&[vec![3, 224, 224]], &HashMap::new()), Some(6));
+        assert_eq!(
+            def.param_count(&[vec![3, 224, 224]], &HashMap::new()),
+            Some(6)
+        );
     }
 }

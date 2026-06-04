@@ -38,7 +38,11 @@ impl BlockDef for MatMulBlockDef {
         let second_last_b = if b.len() >= 2 { b[b.len() - 2] } else { 0 };
         let needs_transpose = last_a == last_b && last_a != second_last_b;
         let n = if needs_transpose {
-            if b.len() >= 2 { b[b.len() - 2] } else { 0 }
+            if b.len() >= 2 {
+                b[b.len() - 2]
+            } else {
+                0
+            }
         } else {
             last_b
         };
@@ -126,7 +130,10 @@ fn candle_codegen(
         && shape_a[shape_a.len() - 1] == shape_b[shape_b.len() - 1]
         && shape_a[shape_a.len() - 1] != shape_b[shape_b.len() - 2];
     let rhs = if needs_transpose {
-        format!("{}.t()?", input_vars.get(1).map(|s| s.as_str()).unwrap_or("?"))
+        format!(
+            "{}.t()?",
+            input_vars.get(1).map(|s| s.as_str()).unwrap_or("?")
+        )
     } else {
         input_vars.get(1).cloned().unwrap_or_default()
     };

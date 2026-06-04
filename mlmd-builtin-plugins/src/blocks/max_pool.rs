@@ -193,7 +193,10 @@ fn candle_codegen(
         format!(
             "{}.pad_with_zeros(2, {}, {})?.pad_with_zeros(3, {}, {})?",
             input_vars.first().map(|s| s.as_str()).unwrap_or("?"),
-            padding, padding, padding, padding
+            padding,
+            padding,
+            padding,
+            padding
         )
     } else {
         input_vars.first().cloned().unwrap_or_default()
@@ -235,7 +238,17 @@ mod tests {
         assert_eq!(def.name(), "MaxPool");
 
         let mut p = HashMap::new();
-        p.insert("kernel".to_string(), ParamValue::Number(Box::new(NumberVal::new(2.0, SourceLoc { line: 0, col: 0, offset: 0 }))));
+        p.insert(
+            "kernel".to_string(),
+            ParamValue::Number(Box::new(NumberVal::new(
+                2.0,
+                SourceLoc {
+                    line: 0,
+                    col: 0,
+                    offset: 0,
+                },
+            ))),
+        );
         let shapes = def.infer_shape(&[vec![3, 224, 224]], &p).unwrap();
         assert_eq!(shapes, vec![vec![3, 112, 112]]);
 

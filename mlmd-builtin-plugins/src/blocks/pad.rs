@@ -51,7 +51,11 @@ impl BlockDef for PadBlockDef {
         if p.len() < 4 {
             return Err("Pad requires padding=(P0,P1,P2,P3)".to_string());
         }
-        Ok(vec![vec![c, h + p[0] as usize + p[1] as usize, w + p[2] as usize + p[3] as usize]])
+        Ok(vec![vec![
+            c,
+            h + p[0] as usize + p[1] as usize,
+            w + p[2] as usize + p[3] as usize,
+        ]])
     }
 
     fn param_count(
@@ -104,7 +108,12 @@ fn pytorch_codegen(
             .collect();
         BlockCodegenResult {
             init: None,
-            forward: format!("{} = torch.nn.functional.pad({}, ({}))", output0, input0, vals.join(", ")),
+            forward: format!(
+                "{} = torch.nn.functional.pad({}, ({}))",
+                output0,
+                input0,
+                vals.join(", ")
+            ),
         }
     } else {
         BlockCodegenResult {
@@ -180,7 +189,14 @@ mod tests {
         let mut p = HashMap::new();
         p.insert(
             "padding".to_string(),
-            ParamValue::Shape(Box::new(ShapeVal::new(vec![1, 1, 1, 1], SourceLoc { line: 0, col: 0, offset: 0 }))),
+            ParamValue::Shape(Box::new(ShapeVal::new(
+                vec![1, 1, 1, 1],
+                SourceLoc {
+                    line: 0,
+                    col: 0,
+                    offset: 0,
+                },
+            ))),
         );
         let shapes = def.infer_shape(&[vec![3, 224, 224]], &p).unwrap();
         assert_eq!(shapes, vec![vec![3, 226, 226]]);

@@ -5,8 +5,8 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use tower_lsp::lsp_types::*;
 use tower_lsp::jsonrpc::Result;
+use tower_lsp::lsp_types::*;
 use tower_lsp::{LanguageServer, LspService, Server};
 
 use crate::lsp::completions::get_completions;
@@ -95,7 +95,8 @@ impl LanguageServer for MlmdLanguageServer {
             match change.range {
                 Some(range) => {
                     // Incremental update: replace the specified range
-                    if let Some(new_text) = apply_incremental_change(&source, &range, &change.text) {
+                    if let Some(new_text) = apply_incremental_change(&source, &range, &change.text)
+                    {
                         source = new_text;
                     }
                 }
@@ -146,10 +147,7 @@ impl LanguageServer for MlmdLanguageServer {
     }
 
     // ── Hover ─────────────────────────────────────────────────────────
-    async fn hover(
-        &self,
-        params: tower_lsp::lsp_types::HoverParams,
-    ) -> Result<Option<Hover>> {
+    async fn hover(&self, params: tower_lsp::lsp_types::HoverParams) -> Result<Option<Hover>> {
         let uri = params.text_document_position_params.text_document.uri;
         let position = params.text_document_position_params.position;
         let source = {

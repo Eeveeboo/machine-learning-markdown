@@ -261,7 +261,10 @@ struct GroupBuilder {
 }
 
 /// Compute group bounding boxes and ensure no overlap between adjacent groups.
-fn compute_group_layouts(graph: &Graph, node_map: &HashMap<String, LayoutNode>) -> Vec<GroupLayout> {
+fn compute_group_layouts(
+    graph: &Graph,
+    node_map: &HashMap<String, LayoutNode>,
+) -> Vec<GroupLayout> {
     let side_pad = 10.0;
     let top_pad = 28.0;
     let bot_pad = 10.0;
@@ -295,18 +298,8 @@ fn compute_group_layouts(graph: &Graph, node_map: &HashMap<String, LayoutNode>) 
     let mut groups: Vec<GroupLayout> = Vec::new();
 
     for mut b in builders {
-        let min_x = b
-            .nodes
-            .iter()
-            .map(|n| n.x)
-            .fold(f64::INFINITY, f64::min)
-            - side_pad;
-        let min_y = b
-            .nodes
-            .iter()
-            .map(|n| n.y)
-            .fold(f64::INFINITY, f64::min)
-            - top_pad;
+        let min_x = b.nodes.iter().map(|n| n.x).fold(f64::INFINITY, f64::min) - side_pad;
+        let min_y = b.nodes.iter().map(|n| n.y).fold(f64::INFINITY, f64::min) - top_pad;
         let max_x = b
             .nodes
             .iter()
@@ -466,8 +459,8 @@ pub fn layout(graph: &Graph) -> LayoutResult {
             .iter()
             .map(|id| width_map.get(id).copied().unwrap_or(0.0))
             .collect();
-        let total_row_width: f64 = widths.iter().sum::<f64>()
-            + (ids.len().saturating_sub(1)) as f64 * H_GAP;
+        let total_row_width: f64 =
+            widths.iter().sum::<f64>() + (ids.len().saturating_sub(1)) as f64 * H_GAP;
         let y = layer_y.get(&layer_idx).copied().unwrap_or(0.0);
         let h = layer_height.get(&layer_idx).copied().unwrap_or(0.0);
 
@@ -513,14 +506,8 @@ pub fn layout(graph: &Graph) -> LayoutResult {
     let group_layouts = compute_group_layouts(graph, &node_map);
 
     // Pre-compute outgoing/incoming edge ordering for port distribution
-    let mut out_edge_order: HashMap<
-        String,
-        Vec<(String, usize, usize)>,
-    > = HashMap::new(); // (target_id, index, count)
-    let mut in_edge_order: HashMap<
-        String,
-        Vec<(String, usize, usize)>,
-    > = HashMap::new(); // (source_id, index, count)
+    let mut out_edge_order: HashMap<String, Vec<(String, usize, usize)>> = HashMap::new(); // (target_id, index, count)
+    let mut in_edge_order: HashMap<String, Vec<(String, usize, usize)>> = HashMap::new(); // (source_id, index, count)
 
     for e in edges {
         if !node_map.contains_key(&e.from) || !node_map.contains_key(&e.to) {
@@ -676,10 +663,7 @@ pub fn layout(graph: &Graph) -> LayoutResult {
             let ty = entry_port.y;
 
             let points = if (fx - tx).abs() < 1.0 {
-                vec![
-                    Point { x: fx, y: fy },
-                    Point { x: tx, y: ty },
-                ]
+                vec![Point { x: fx, y: fy }, Point { x: tx, y: ty }]
             } else {
                 let midpoint_stagger = 10.0;
                 let base_mid = (fy + ty) / 2.0;
@@ -733,7 +717,11 @@ pub fn layout(graph: &Graph) -> LayoutResult {
             if pts.len() >= 2 {
                 let mid = pts.len() / 2;
                 let p1 = if mid > 0 { &pts[mid - 1] } else { &pts[0] };
-                let p2 = if mid < pts.len() { &pts[mid] } else { &pts[pts.len() - 1] };
+                let p2 = if mid < pts.len() {
+                    &pts[mid]
+                } else {
+                    &pts[pts.len() - 1]
+                };
                 ((p1.x + p2.x) / 2.0 + 4.0, (p1.y + p2.y) / 2.0 + 4.0)
             } else {
                 (edge.from.x, edge.from.y)
@@ -891,13 +879,15 @@ mod tests {
         assert_eq!(result.nodes.len(), 4);
 
         // All nodes in a single column (same x)
-        let xs: std::collections::HashSet<u64> =
-            result.nodes.iter().map(|n| n.x as u64).collect();
+        let xs: std::collections::HashSet<u64> = result.nodes.iter().map(|n| n.x as u64).collect();
         assert_eq!(xs.len(), 1);
 
         // Nodes are vertically ordered
-        let by_id: HashMap<&str, &LayoutNode> =
-            result.nodes.iter().map(|n| (n.block.id.as_str(), n)).collect();
+        let by_id: HashMap<&str, &LayoutNode> = result
+            .nodes
+            .iter()
+            .map(|n| (n.block.id.as_str(), n))
+            .collect();
         assert!(by_id["a"].y < by_id["b"].y);
         assert!(by_id["b"].y < by_id["c"].y);
         assert!(by_id["c"].y < by_id["d"].y);
@@ -918,8 +908,11 @@ mod tests {
         );
         let result = layout(&g);
 
-        let by_id: HashMap<&str, &LayoutNode> =
-            result.nodes.iter().map(|n| (n.block.id.as_str(), n)).collect();
+        let by_id: HashMap<&str, &LayoutNode> = result
+            .nodes
+            .iter()
+            .map(|n| (n.block.id.as_str(), n))
+            .collect();
 
         // b and c are at the same layer (same y)
         assert!((by_id["b"].y - by_id["c"].y).abs() < 0.001);

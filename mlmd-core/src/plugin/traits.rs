@@ -82,11 +82,7 @@ pub trait BlockPlugin: Send + Sync {
     ) -> Result<Vec<Shape>, String>;
 
     /// Optional: total parameter count for this block.
-    fn param_count(
-        &self,
-        inputs: &[Shape],
-        params: &HashMap<String, ParamValue>,
-    ) -> Option<usize>;
+    fn param_count(&self, inputs: &[Shape], params: &HashMap<String, ParamValue>) -> Option<usize>;
 
     /// Generate code for this block for a specific target.
     /// Returns `None` if this plugin does not support the given target.

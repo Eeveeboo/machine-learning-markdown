@@ -201,7 +201,17 @@ mod tests {
         assert_eq!(def.name(), "AvgPool");
 
         let mut p = HashMap::new();
-        p.insert("kernel".to_string(), ParamValue::Number(Box::new(NumberVal::new(2.0, SourceLoc { line: 0, col: 0, offset: 0 }))));
+        p.insert(
+            "kernel".to_string(),
+            ParamValue::Number(Box::new(NumberVal::new(
+                2.0,
+                SourceLoc {
+                    line: 0,
+                    col: 0,
+                    offset: 0,
+                },
+            ))),
+        );
         let shapes = def.infer_shape(&[vec![3, 224, 224]], &p).unwrap();
         assert_eq!(shapes, vec![vec![3, 112, 112]]);
 

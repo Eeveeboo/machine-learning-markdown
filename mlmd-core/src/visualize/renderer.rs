@@ -12,8 +12,16 @@ use super::svg_builder::SvgBuilder;
 
 const MERGE_TYPES: &[&str] = &["Add", "Mul", "Sub", "Div", "Concat", "MatMul"];
 const ACTIVATION_TYPES: &[&str] = &[
-    "ReLU", "GELU", "Sigmoid", "Tanh", "LeakyReLU", "ELU", "Swish", "Mish",
-    "Softmax", "LogSoftmax",
+    "ReLU",
+    "GELU",
+    "Sigmoid",
+    "Tanh",
+    "LeakyReLU",
+    "ELU",
+    "Swish",
+    "Mish",
+    "Softmax",
+    "LogSoftmax",
 ];
 
 fn block_category(block_type: &str) -> &'static str {
@@ -45,7 +53,14 @@ fn format_param_value(v: &ParamValue) -> String {
         ParamValue::String(s) => format!("\"{}\"", s.value),
         ParamValue::Bool(b) => format!("{}", b.value),
         ParamValue::Bareword(bw) => bw.value.clone(),
-        ParamValue::Shape(s) => format!("({})", s.dims.iter().map(|d| d.to_string()).collect::<Vec<_>>().join(",")),
+        ParamValue::Shape(s) => format!(
+            "({})",
+            s.dims
+                .iter()
+                .map(|d| d.to_string())
+                .collect::<Vec<_>>()
+                .join(",")
+        ),
         ParamValue::List(l) => {
             let items: Vec<String> = l.items.iter().map(format_param_value).collect();
             format!("[{}]", items.join(","))
@@ -164,7 +179,12 @@ pub fn render(graph: &Graph, layout_result: &LayoutResult) -> String {
         text_opts.insert("fill".to_string(), "#64748b".to_string());
         text_opts.insert("font-family".to_string(), "sans-serif".to_string());
         text_opts.insert("font-weight".to_string(), "500".to_string());
-        svg.text(gx + 8.0, gy + 14.0, &group.path.join(" / "), Some(text_opts));
+        svg.text(
+            gx + 8.0,
+            gy + 14.0,
+            &group.path.join(" / "),
+            Some(text_opts),
+        );
     }
 
     // --- Nodes ---
@@ -331,7 +351,11 @@ pub fn render(graph: &Graph, layout_result: &LayoutResult) -> String {
             if !edge_label.is_empty() {
                 let mid = pts.len() / 2;
                 let p1 = if mid > 0 { &pts[mid - 1] } else { &pts[0] };
-                let p2 = if mid < pts.len() { &pts[mid] } else { &pts[pts.len() - 1] };
+                let p2 = if mid < pts.len() {
+                    &pts[mid]
+                } else {
+                    &pts[pts.len() - 1]
+                };
                 let lx = edge
                     .label_position
                     .map(|p| p.x + x_offset)
@@ -444,15 +468,17 @@ mod tests {
                 let mut m = HashMap::new();
                 m.insert(
                     "filters".to_string(),
-                    ParamValue::Number(Box::new(
-                        crate::ast::nodes::NumberVal::new(6.0, dummy_loc()),
-                    )),
+                    ParamValue::Number(Box::new(crate::ast::nodes::NumberVal::new(
+                        6.0,
+                        dummy_loc(),
+                    ))),
                 );
                 m.insert(
                     "kernel".to_string(),
-                    ParamValue::Number(Box::new(
-                        crate::ast::nodes::NumberVal::new(5.0, dummy_loc()),
-                    )),
+                    ParamValue::Number(Box::new(crate::ast::nodes::NumberVal::new(
+                        5.0,
+                        dummy_loc(),
+                    ))),
                 );
                 m
             },
@@ -525,27 +551,39 @@ mod tests {
     #[test]
     fn test_chain_produces_arrows() {
         let blocks = vec![
-            make_block_with_shapes("a", "Linear", {
-                let mut m = HashMap::new();
-                m.insert(
-                    "out_features".to_string(),
-                    ParamValue::Number(Box::new(
-                        crate::ast::nodes::NumberVal::new(120.0, dummy_loc()),
-                    )),
-                );
-                m
-            }, vec![vec![120]]),
+            make_block_with_shapes(
+                "a",
+                "Linear",
+                {
+                    let mut m = HashMap::new();
+                    m.insert(
+                        "out_features".to_string(),
+                        ParamValue::Number(Box::new(crate::ast::nodes::NumberVal::new(
+                            120.0,
+                            dummy_loc(),
+                        ))),
+                    );
+                    m
+                },
+                vec![vec![120]],
+            ),
             make_block("b", "ReLU"),
-            make_block_with_shapes("c", "Linear", {
-                let mut m = HashMap::new();
-                m.insert(
-                    "out_features".to_string(),
-                    ParamValue::Number(Box::new(
-                        crate::ast::nodes::NumberVal::new(10.0, dummy_loc()),
-                    )),
-                );
-                m
-            }, vec![vec![10]]),
+            make_block_with_shapes(
+                "c",
+                "Linear",
+                {
+                    let mut m = HashMap::new();
+                    m.insert(
+                        "out_features".to_string(),
+                        ParamValue::Number(Box::new(crate::ast::nodes::NumberVal::new(
+                            10.0,
+                            dummy_loc(),
+                        ))),
+                    );
+                    m
+                },
+                vec![vec![10]],
+            ),
         ];
         let g = Graph {
             blocks,
@@ -596,16 +634,22 @@ mod tests {
 
     #[test]
     fn test_named_edge_label() {
-        let block_a = make_block_with_shapes("a", "Conv2d", {
-            let mut m = HashMap::new();
-            m.insert(
-                "filters".to_string(),
-                ParamValue::Number(Box::new(
-                    crate::ast::nodes::NumberVal::new(32.0, dummy_loc()),
-                )),
-            );
-            m
-        }, vec![vec![32, 64, 64]]);
+        let block_a = make_block_with_shapes(
+            "a",
+            "Conv2d",
+            {
+                let mut m = HashMap::new();
+                m.insert(
+                    "filters".to_string(),
+                    ParamValue::Number(Box::new(crate::ast::nodes::NumberVal::new(
+                        32.0,
+                        dummy_loc(),
+                    ))),
+                );
+                m
+            },
+            vec![vec![32, 64, 64]],
+        );
         let block_b = make_block_with_shapes("b", "ReLU", HashMap::new(), vec![vec![32, 64, 64]]);
         let g = Graph {
             blocks: vec![block_a, block_b],
@@ -637,12 +681,42 @@ mod tests {
         let g = Graph {
             blocks,
             edges: vec![
-                Edge { from: "a".to_string(), to: "b".to_string(), tensor_name: None, shape: None },
-                Edge { from: "b".to_string(), to: "c".to_string(), tensor_name: None, shape: None },
-                Edge { from: "c".to_string(), to: "d".to_string(), tensor_name: None, shape: None },
-                Edge { from: "d".to_string(), to: "e".to_string(), tensor_name: None, shape: None },
-                Edge { from: "e".to_string(), to: "f".to_string(), tensor_name: None, shape: None },
-                Edge { from: "a".to_string(), to: "f".to_string(), tensor_name: Some("skip".to_string()), shape: None },
+                Edge {
+                    from: "a".to_string(),
+                    to: "b".to_string(),
+                    tensor_name: None,
+                    shape: None,
+                },
+                Edge {
+                    from: "b".to_string(),
+                    to: "c".to_string(),
+                    tensor_name: None,
+                    shape: None,
+                },
+                Edge {
+                    from: "c".to_string(),
+                    to: "d".to_string(),
+                    tensor_name: None,
+                    shape: None,
+                },
+                Edge {
+                    from: "d".to_string(),
+                    to: "e".to_string(),
+                    tensor_name: None,
+                    shape: None,
+                },
+                Edge {
+                    from: "e".to_string(),
+                    to: "f".to_string(),
+                    tensor_name: None,
+                    shape: None,
+                },
+                Edge {
+                    from: "a".to_string(),
+                    to: "f".to_string(),
+                    tensor_name: Some("skip".to_string()),
+                    shape: None,
+                },
             ],
             groups: vec![],
         };
@@ -655,69 +729,120 @@ mod tests {
     #[test]
     fn test_lenet_style_chain() {
         let blocks = vec![
-            make_block_with_shapes("b0", "Input", {
-                let mut m = HashMap::new();
-                m.insert(
-                    "shape".to_string(),
-                    ParamValue::Shape(Box::new(
-                        crate::ast::nodes::ShapeVal::new(vec![1, 28, 28], dummy_loc()),
-                    )),
-                );
-                m
-            }, vec![vec![1, 28, 28]]),
-            make_block_with_shapes("b1", "Conv2d", {
-                let mut m = HashMap::new();
-                m.insert(
-                    "filters".to_string(),
-                    ParamValue::Number(Box::new(
-                        crate::ast::nodes::NumberVal::new(6.0, dummy_loc()),
-                    )),
-                );
-                m.insert(
-                    "kernel".to_string(),
-                    ParamValue::Number(Box::new(
-                        crate::ast::nodes::NumberVal::new(5.0, dummy_loc()),
-                    )),
-                );
-                m
-            }, vec![vec![6, 24, 24]]),
+            make_block_with_shapes(
+                "b0",
+                "Input",
+                {
+                    let mut m = HashMap::new();
+                    m.insert(
+                        "shape".to_string(),
+                        ParamValue::Shape(Box::new(crate::ast::nodes::ShapeVal::new(
+                            vec![1, 28, 28],
+                            dummy_loc(),
+                        ))),
+                    );
+                    m
+                },
+                vec![vec![1, 28, 28]],
+            ),
+            make_block_with_shapes(
+                "b1",
+                "Conv2d",
+                {
+                    let mut m = HashMap::new();
+                    m.insert(
+                        "filters".to_string(),
+                        ParamValue::Number(Box::new(crate::ast::nodes::NumberVal::new(
+                            6.0,
+                            dummy_loc(),
+                        ))),
+                    );
+                    m.insert(
+                        "kernel".to_string(),
+                        ParamValue::Number(Box::new(crate::ast::nodes::NumberVal::new(
+                            5.0,
+                            dummy_loc(),
+                        ))),
+                    );
+                    m
+                },
+                vec![vec![6, 24, 24]],
+            ),
             make_block("b2", "ReLU"),
-            make_block_with_shapes("b3", "MaxPool", {
-                let mut m = HashMap::new();
-                m.insert(
-                    "kernel".to_string(),
-                    ParamValue::Number(Box::new(
-                        crate::ast::nodes::NumberVal::new(2.0, dummy_loc()),
-                    )),
-                );
-                m.insert(
-                    "stride".to_string(),
-                    ParamValue::Number(Box::new(
-                        crate::ast::nodes::NumberVal::new(2.0, dummy_loc()),
-                    )),
-                );
-                m
-            }, vec![vec![6, 12, 12]]),
+            make_block_with_shapes(
+                "b3",
+                "MaxPool",
+                {
+                    let mut m = HashMap::new();
+                    m.insert(
+                        "kernel".to_string(),
+                        ParamValue::Number(Box::new(crate::ast::nodes::NumberVal::new(
+                            2.0,
+                            dummy_loc(),
+                        ))),
+                    );
+                    m.insert(
+                        "stride".to_string(),
+                        ParamValue::Number(Box::new(crate::ast::nodes::NumberVal::new(
+                            2.0,
+                            dummy_loc(),
+                        ))),
+                    );
+                    m
+                },
+                vec![vec![6, 12, 12]],
+            ),
             make_block("b4", "Flatten"),
-            make_block_with_shapes("b5", "Linear", {
-                let mut m = HashMap::new();
-                m.insert(
-                    "out_features".to_string(),
-                    ParamValue::Number(Box::new(
-                        crate::ast::nodes::NumberVal::new(120.0, dummy_loc()),
-                    )),
-                );
-                m
-            }, vec![vec![120]]),
+            make_block_with_shapes(
+                "b5",
+                "Linear",
+                {
+                    let mut m = HashMap::new();
+                    m.insert(
+                        "out_features".to_string(),
+                        ParamValue::Number(Box::new(crate::ast::nodes::NumberVal::new(
+                            120.0,
+                            dummy_loc(),
+                        ))),
+                    );
+                    m
+                },
+                vec![vec![120]],
+            ),
         ];
         let g = Graph {
             blocks,
             edges: vec![
-                Edge { from: "b0".to_string(), to: "b1".to_string(), tensor_name: None, shape: None },
-                Edge { from: "b1".to_string(), to: "b2".to_string(), tensor_name: None, shape: None },
-                Edge { from: "b2".to_string(), to: "b3".to_string(), tensor_name: None, shape: None },
-                Edge { from: "b3".to_string(), to: "b4".to_string(), tensor_name: None, shape: None },
-                Edge { from: "b4".to_string(), to: "b5".to_string(), tensor_name: None, shape: None },
+                Edge {
+                    from: "b0".to_string(),
+                    to: "b1".to_string(),
+                    tensor_name: None,
+                    shape: None,
+                },
+                Edge {
+                    from: "b1".to_string(),
+                    to: "b2".to_string(),
+                    tensor_name: None,
+                    shape: None,
+                },
+                Edge {
+                    from: "b2".to_string(),
+                    to: "b3".to_string(),
+                    tensor_name: None,
+                    shape: None,
+                },
+                Edge {
+                    from: "b3".to_string(),
+                    to: "b4".to_string(),
+                    tensor_name: None,
+                    shape: None,
+                },
+                Edge {
+                    from: "b4".to_string(),
+                    to: "b5".to_string(),
+                    tensor_name: None,
+                    shape: None,
+                },
             ],
             groups: vec![],
         };

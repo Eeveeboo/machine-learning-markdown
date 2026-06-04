@@ -36,7 +36,8 @@ fn install_vscode() -> anyhow::Result<()> {
     }
 
     // Target: ~/.vscode/extensions/mlmd-vscode/
-    let home = std::env::var("HOME").map_err(|_| anyhow::anyhow!("Cannot determine HOME directory"))?;
+    let home =
+        std::env::var("HOME").map_err(|_| anyhow::anyhow!("Cannot determine HOME directory"))?;
     let target_dir = std::path::Path::new(&home)
         .join(".vscode")
         .join("extensions")
@@ -52,7 +53,11 @@ fn install_vscode() -> anyhow::Result<()> {
     std::fs::create_dir_all(target_dir.parent().unwrap())?;
 
     // Copy recursively
-    eprintln!("Copying {} to {}", source_dir.display(), target_dir.display());
+    eprintln!(
+        "Copying {} to {}",
+        source_dir.display(),
+        target_dir.display()
+    );
     copy_dir_recursive(&source_dir, &target_dir)?;
 
     // Run npm install && npm run build
@@ -125,7 +130,11 @@ fn install_zed() -> anyhow::Result<()> {
     let wasm_target = project_root.join("extension.wasm");
     std::fs::copy(&wasm_source, &wasm_target)
         .map_err(|e| anyhow::anyhow!("Failed to copy WASM binary: {}", e))?;
-    eprintln!("Copied {} → {}", wasm_source.display(), wasm_target.display());
+    eprintln!(
+        "Copied {} → {}",
+        wasm_source.display(),
+        wasm_target.display()
+    );
 
     // Update extension.toml grammar URL
     let extension_toml_path = project_root.join("extension.toml");
@@ -154,11 +163,13 @@ fn update_grammar_url(content: &str, file_url: &str) -> String {
         .lines()
         .map(|line| {
             if line.trim_start().starts_with("grammar")
-                || (line.trim_start().starts_with("grammars")
-                    || line.contains("grammar"))
+                || (line.trim_start().starts_with("grammars") || line.contains("grammar"))
             {
                 // Check if this line contains a URL
-                if line.contains("http") || line.contains("file://") || line.contains("grammars/mlmd") {
+                if line.contains("http")
+                    || line.contains("file://")
+                    || line.contains("grammars/mlmd")
+                {
                     found = true;
                     // Replace the URL in this line
                     if let Some(_eq_idx) = line.find('=') {
@@ -177,7 +188,10 @@ fn update_grammar_url(content: &str, file_url: &str) -> String {
         .collect();
 
     if !found {
-        result.push(format!("\n# grammar URL updated by install command\ngrammar = \"{}\"", file_url));
+        result.push(format!(
+            "\n# grammar URL updated by install command\ngrammar = \"{}\"",
+            file_url
+        ));
     }
 
     result.join("\n")

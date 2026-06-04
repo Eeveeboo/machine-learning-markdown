@@ -422,8 +422,14 @@ mod tests {
                 groups: vec![],
             };
             let diags = lint(&graph, &registry);
-            let plugin_diags: Vec<_> = diags.iter().filter(|d| d.rule == "missing-plugin").collect();
-            assert!(!plugin_diags.is_empty(), "expected missing plugin diagnostic");
+            let plugin_diags: Vec<_> = diags
+                .iter()
+                .filter(|d| d.rule == "missing-plugin")
+                .collect();
+            assert!(
+                !plugin_diags.is_empty(),
+                "expected missing plugin diagnostic"
+            );
             assert_eq!(plugin_diags[0].severity, Severity::Error);
             assert!(plugin_diags[0].message.contains("NonExistentBlock123"));
         }
@@ -437,7 +443,10 @@ mod tests {
                 groups: vec![],
             };
             let diags = lint(&graph, &registry);
-            let plugin_diags: Vec<_> = diags.iter().filter(|d| d.rule == "missing-plugin").collect();
+            let plugin_diags: Vec<_> = diags
+                .iter()
+                .filter(|d| d.rule == "missing-plugin")
+                .collect();
             assert_eq!(plugin_diags.len(), 0);
         }
     }
@@ -499,8 +508,14 @@ mod tests {
                 groups: vec![],
             };
             let diags = lint(&graph, &registry);
-            let shape_diags: Vec<_> = diags.iter().filter(|d| d.rule == "shape-mismatch").collect();
-            assert!(!shape_diags.is_empty(), "expected shape mismatch diagnostic");
+            let shape_diags: Vec<_> = diags
+                .iter()
+                .filter(|d| d.rule == "shape-mismatch")
+                .collect();
+            assert!(
+                !shape_diags.is_empty(),
+                "expected shape mismatch diagnostic"
+            );
             assert_eq!(shape_diags[0].severity, Severity::Error);
         }
 
@@ -519,7 +534,10 @@ mod tests {
                 groups: vec![],
             };
             let diags = lint(&graph, &registry);
-            let shape_diags: Vec<_> = diags.iter().filter(|d| d.rule == "shape-mismatch").collect();
+            let shape_diags: Vec<_> = diags
+                .iter()
+                .filter(|d| d.rule == "shape-mismatch")
+                .collect();
             assert_eq!(shape_diags.len(), 0);
         }
     }
@@ -547,8 +565,14 @@ mod tests {
                 groups: vec![],
             };
             let diags = lint(&graph, &registry);
-            let dup_diags: Vec<_> = diags.iter().filter(|d| d.rule == "duplicate-tensor-name").collect();
-            assert!(!dup_diags.is_empty(), "expected duplicate tensor name diagnostic");
+            let dup_diags: Vec<_> = diags
+                .iter()
+                .filter(|d| d.rule == "duplicate-tensor-name")
+                .collect();
+            assert!(
+                !dup_diags.is_empty(),
+                "expected duplicate tensor name diagnostic"
+            );
             assert_eq!(dup_diags[0].severity, Severity::Error);
             assert!(dup_diags[0].message.contains("feat"));
         }
@@ -574,7 +598,10 @@ mod tests {
                 groups: vec![],
             };
             let diags = lint(&graph, &registry);
-            let dup_diags: Vec<_> = diags.iter().filter(|d| d.rule == "duplicate-tensor-name").collect();
+            let dup_diags: Vec<_> = diags
+                .iter()
+                .filter(|d| d.rule == "duplicate-tensor-name")
+                .collect();
             assert_eq!(dup_diags.len(), 0);
         }
     }
@@ -597,8 +624,14 @@ mod tests {
                 groups: vec![],
             };
             let diags = lint(&graph, &registry);
-            let ref_diags: Vec<_> = diags.iter().filter(|d| d.rule == "undefined-tensor-ref").collect();
-            assert!(!ref_diags.is_empty(), "expected undefined tensor ref diagnostic");
+            let ref_diags: Vec<_> = diags
+                .iter()
+                .filter(|d| d.rule == "undefined-tensor-ref")
+                .collect();
+            assert!(
+                !ref_diags.is_empty(),
+                "expected undefined tensor ref diagnostic"
+            );
             assert_eq!(ref_diags[0].severity, Severity::Error);
             assert!(ref_diags[0].message.contains("nonexistent_tensor"));
         }
@@ -609,10 +642,7 @@ mod tests {
             let mut params = HashMap::new();
             params.insert("dims".to_string(), p_shape(vec![3, 32, 32]));
             let mut join_params = HashMap::new();
-            join_params.insert(
-                "sources".to_string(),
-                p_list(vec![p_bareword("my_tensor")]),
-            );
+            join_params.insert("sources".to_string(), p_list(vec![p_bareword("my_tensor")]));
             let graph = Graph {
                 blocks: vec![
                     make_block_with_params("b0", "Input", params),
@@ -622,7 +652,10 @@ mod tests {
                 groups: vec![],
             };
             let diags = lint(&graph, &registry);
-            let ref_diags: Vec<_> = diags.iter().filter(|d| d.rule == "undefined-tensor-ref").collect();
+            let ref_diags: Vec<_> = diags
+                .iter()
+                .filter(|d| d.rule == "undefined-tensor-ref")
+                .collect();
             assert_eq!(ref_diags.len(), 0);
         }
     }

@@ -32,10 +32,7 @@ pub fn get_str(params: &HashMap<String, ParamValue>, key: &str) -> Option<String
 }
 
 /// Get a required numeric param, returning an error if absent or wrong type.
-pub fn require_num(
-    params: &HashMap<String, ParamValue>,
-    key: &str,
-) -> Result<f64, String> {
+pub fn require_num(params: &HashMap<String, ParamValue>, key: &str) -> Result<f64, String> {
     match params.get(key) {
         None => Err(format!("Missing required numeric param \"{key}\"")),
         Some(ParamValue::Number(n)) => Ok(n.value),
@@ -102,8 +99,7 @@ pub fn conv_output_size(
     stride: usize,
     dilation: usize,
 ) -> usize {
-    let numerator = (input as isize)
-        + 2 * (padding as isize)
+    let numerator = (input as isize) + 2 * (padding as isize)
         - (dilation as isize) * ((kernel as isize) - 1)
         - 1;
     if numerator < 0 {
@@ -145,9 +141,7 @@ pub fn conv_transpose_output_size(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mlmd_core::ast::nodes::{
-        BarewordVal, ListVal, NumberVal, ShapeVal, SourceLoc, StringVal,
-    };
+    use mlmd_core::ast::nodes::{BarewordVal, ListVal, NumberVal, ShapeVal, SourceLoc, StringVal};
 
     fn loc() -> SourceLoc {
         SourceLoc {

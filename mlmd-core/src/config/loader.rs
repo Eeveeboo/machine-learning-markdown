@@ -63,5 +63,3 @@ fn find_config() -> Result<std::path::PathBuf, String> {
     // Return a path that won't exist — caller handles absense
     Ok(cwd.join(".mlmdrc"))
 }
-
-

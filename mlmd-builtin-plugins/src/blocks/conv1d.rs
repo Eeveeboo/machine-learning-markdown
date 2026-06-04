@@ -73,11 +73,7 @@ impl BlockDef for Conv1dBlockDef {
         Ok(vec![vec![f, conv_out(l, k, s, p)]])
     }
 
-    fn param_count(
-        &self,
-        inputs: &[Shape],
-        params: &HashMap<String, ParamValue>,
-    ) -> Option<usize> {
+    fn param_count(&self, inputs: &[Shape], params: &HashMap<String, ParamValue>) -> Option<usize> {
         let in_c = if !inputs.is_empty() && !inputs[0].is_empty() {
             inputs[0][0]
         } else {
@@ -251,10 +247,50 @@ mod tests {
         assert_eq!(def.name(), "Conv1d");
 
         let mut p = HashMap::new();
-        p.insert("filters".to_string(), ParamValue::Number(Box::new(NumberVal::new(32.0, SourceLoc { line: 0, col: 0, offset: 0 }))));
-        p.insert("kernel".to_string(), ParamValue::Number(Box::new(NumberVal::new(3.0, SourceLoc { line: 0, col: 0, offset: 0 }))));
-        p.insert("stride".to_string(), ParamValue::Number(Box::new(NumberVal::new(1.0, SourceLoc { line: 0, col: 0, offset: 0 }))));
-        p.insert("padding".to_string(), ParamValue::Number(Box::new(NumberVal::new(1.0, SourceLoc { line: 0, col: 0, offset: 0 }))));
+        p.insert(
+            "filters".to_string(),
+            ParamValue::Number(Box::new(NumberVal::new(
+                32.0,
+                SourceLoc {
+                    line: 0,
+                    col: 0,
+                    offset: 0,
+                },
+            ))),
+        );
+        p.insert(
+            "kernel".to_string(),
+            ParamValue::Number(Box::new(NumberVal::new(
+                3.0,
+                SourceLoc {
+                    line: 0,
+                    col: 0,
+                    offset: 0,
+                },
+            ))),
+        );
+        p.insert(
+            "stride".to_string(),
+            ParamValue::Number(Box::new(NumberVal::new(
+                1.0,
+                SourceLoc {
+                    line: 0,
+                    col: 0,
+                    offset: 0,
+                },
+            ))),
+        );
+        p.insert(
+            "padding".to_string(),
+            ParamValue::Number(Box::new(NumberVal::new(
+                1.0,
+                SourceLoc {
+                    line: 0,
+                    col: 0,
+                    offset: 0,
+                },
+            ))),
+        );
         let shapes = def.infer_shape(&[vec![3, 224]], &p).unwrap();
         assert_eq!(shapes, vec![vec![32, 224]]);
 

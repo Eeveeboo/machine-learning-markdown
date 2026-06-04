@@ -160,7 +160,17 @@ mod tests {
         assert!(!def.show_depth());
 
         let mut p = HashMap::new();
-        p.insert("chunks".to_string(), ParamValue::Number(Box::new(NumberVal::new(4.0, SourceLoc { line: 0, col: 0, offset: 0 }))));
+        p.insert(
+            "chunks".to_string(),
+            ParamValue::Number(Box::new(NumberVal::new(
+                4.0,
+                SourceLoc {
+                    line: 0,
+                    col: 0,
+                    offset: 0,
+                },
+            ))),
+        );
         let shapes = def.infer_shape(&[vec![8, 224, 224]], &p).unwrap();
         assert_eq!(shapes.len(), 4);
         assert_eq!(shapes[0], vec![2, 224, 224]);

@@ -186,8 +186,28 @@ mod tests {
         assert_eq!(def.name(), "Embedding");
 
         let mut p = HashMap::new();
-        p.insert("vocab_size".to_string(), ParamValue::Number(Box::new(NumberVal::new(1000.0, SourceLoc { line: 0, col: 0, offset: 0 }))));
-        p.insert("embed_dim".to_string(), ParamValue::Number(Box::new(NumberVal::new(128.0, SourceLoc { line: 0, col: 0, offset: 0 }))));
+        p.insert(
+            "vocab_size".to_string(),
+            ParamValue::Number(Box::new(NumberVal::new(
+                1000.0,
+                SourceLoc {
+                    line: 0,
+                    col: 0,
+                    offset: 0,
+                },
+            ))),
+        );
+        p.insert(
+            "embed_dim".to_string(),
+            ParamValue::Number(Box::new(NumberVal::new(
+                128.0,
+                SourceLoc {
+                    line: 0,
+                    col: 0,
+                    offset: 0,
+                },
+            ))),
+        );
         let shapes = def.infer_shape(&[vec![10]], &p).unwrap();
         assert_eq!(shapes, vec![vec![10, 128]]);
 

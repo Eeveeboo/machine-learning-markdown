@@ -11,4 +11,6 @@ pub use crate::codegen::target::{register_target, CodegenTarget};
 pub use crate::config::loader::MlmdConfig;
 pub use crate::error::MlmdError;
 pub use crate::plugin::registry::{get_block_codegen, register_block_codegen};
-pub use crate::plugin::traits::{BlockCodegenFn, BlockCodegenResult, BlockPlugin, CandleInit, CandleInitOrString};
+pub use crate::plugin::traits::{
+    BlockCodegenFn, BlockCodegenResult, BlockPlugin, CandleInit, CandleInitOrString,
+};

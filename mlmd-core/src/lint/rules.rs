@@ -91,10 +91,7 @@ pub fn check_cycles(graph: &Graph) -> Vec<LintDiagnostic> {
 // ---------------------------------------------------------------------------
 
 /// Missing plugin/block type: unknown type not in registry.
-pub fn check_missing_plugins(
-    graph: &Graph,
-    registry: &BlockRegistry,
-) -> Vec<LintDiagnostic> {
+pub fn check_missing_plugins(graph: &Graph, registry: &BlockRegistry) -> Vec<LintDiagnostic> {
     let mut diags = Vec::new();
     for b in &graph.blocks {
         if registry.get(&b.block_type).is_none() {
@@ -115,10 +112,7 @@ pub fn check_missing_plugins(
 
 /// Missing required params: for each block with a registered BlockDef, check
 /// all required params are present.
-pub fn check_missing_params(
-    graph: &Graph,
-    registry: &BlockRegistry,
-) -> Vec<LintDiagnostic> {
+pub fn check_missing_params(graph: &Graph, registry: &BlockRegistry) -> Vec<LintDiagnostic> {
     let mut diags = Vec::new();
     for b in &graph.blocks {
         let def = match registry.get(&b.block_type) {
@@ -162,7 +156,10 @@ pub fn check_shapes(graph: &Graph, registry: &BlockRegistry) -> Vec<LintDiagnost
             continue; // covered by check_cycles
         }
         let b = e.block_id.as_str();
-        let loc = block_map.get(b).map(|blk| block_loc(blk)).unwrap_or_else(unknown_loc);
+        let loc = block_map
+            .get(b)
+            .map(|blk| block_loc(blk))
+            .unwrap_or_else(unknown_loc);
         diags.push(LintDiagnostic {
             severity: Severity::Error,
             message: e.message.clone(),
@@ -174,8 +171,12 @@ pub fn check_shapes(graph: &Graph, registry: &BlockRegistry) -> Vec<LintDiagnost
     // Elementwise merge compatibility check:
     // For blocks where the output shape equals the first input shape (passthrough
     // semantics, e.g., Add/Mul/Sub/Div), verify all input shapes match.
-    let inferred_block_map: HashMap<&str, &Block> =
-        result.graph.blocks.iter().map(|b| (b.id.as_str(), b)).collect();
+    let inferred_block_map: HashMap<&str, &Block> = result
+        .graph
+        .blocks
+        .iter()
+        .map(|b| (b.id.as_str(), b))
+        .collect();
 
     for b in &graph.blocks {
         let def = registry.get(&b.block_type);
@@ -194,9 +195,7 @@ pub fn check_shapes(graph: &Graph, registry: &BlockRegistry) -> Vec<LintDiagnost
         if output_shapes.len() == 1 {
             let out = &output_shapes[0];
             let first_in = &input_shapes[0];
-            if out.len() == first_in.len()
-                && out.iter().zip(first_in.iter()).all(|(a, b)| a == b)
-            {
+            if out.len() == first_in.len() && out.iter().zip(first_in.iter()).all(|(a, b)| a == b) {
                 // Output matches first input — this may be an elementwise op.
                 // Verify all inputs match the first.
                 for i in 1..input_shapes.len() {
@@ -206,8 +205,7 @@ pub fn check_shapes(graph: &Graph, registry: &BlockRegistry) -> Vec<LintDiagnost
                     if mismatch {
                         let first_str: Vec<String> =
                             first_in.iter().map(|d| d.to_string()).collect();
-                        let inp_str: Vec<String> =
-                            inp.iter().map(|d| d.to_string()).collect();
+                        let inp_str: Vec<String> = inp.iter().map(|d| d.to_string()).collect();
                         diags.push(LintDiagnostic {
                             severity: Severity::Error,
                             message: format!(
@@ -290,10 +288,7 @@ pub fn check_undefined_tensor_refs(graph: &Graph) -> Vec<LintDiagnostic> {
                         if !defined.contains(bw.value.as_str()) {
                             diags.push(LintDiagnostic {
                                 severity: Severity::Error,
-                                message: format!(
-                                    "Undefined tensor reference: \"{}\"",
-                                    bw.value
-                                ),
+                                message: format!("Undefined tensor reference: \"{}\"", bw.value),
                                 loc: block_loc(b),
                                 rule: "undefined-tensor-ref".to_string(),
                             });
@@ -314,8 +309,7 @@ pub fn check_undefined_tensor_refs(graph: &Graph) -> Vec<LintDiagnostic> {
 /// Unused named tensors: named tensors (edges with tensorName) whose target
 /// block does not exist in the graph produce warnings.
 pub fn check_unused_tensors(graph: &Graph) -> Vec<LintDiagnostic> {
-    let block_ids: HashSet<&str> =
-        graph.blocks.iter().map(|b| b.id.as_str()).collect();
+    let block_ids: HashSet<&str> = graph.blocks.iter().map(|b| b.id.as_str()).collect();
 
     let mut diags = Vec::new();
     for e in &graph.edges {
@@ -323,10 +317,7 @@ pub fn check_unused_tensors(graph: &Graph) -> Vec<LintDiagnostic> {
             if !block_ids.contains(e.to.as_str()) {
                 diags.push(LintDiagnostic {
                     severity: Severity::Warning,
-                    message: format!(
-                        "Named tensor \"{}\" is created but never consumed",
-                        name
-                    ),
+                    message: format!("Named tensor \"{}\" is created but never consumed", name),
                     loc: unknown_loc(),
                     rule: "unused-tensor".to_string(),
                 });
@@ -446,15 +437,26 @@ mod tests {
 
     struct MockInput;
     impl BlockDef for MockInput {
-        fn name(&self) -> &str { "Input" }
-        fn params(&self) -> &[ParamSpec] { &[] }
+        fn name(&self) -> &str {
+            "Input"
+        }
+        fn params(&self) -> &[ParamSpec] {
+            &[]
+        }
         fn infer_shape(
             &self,
             _inputs: &[Shape],
             params: &HashMap<String, ParamValue>,
         ) -> Result<Vec<Shape>, String> {
-            let dims = params.get("dims")
-                .and_then(|v| if let ParamValue::Shape(s) = v { Some(s.dims.clone()) } else { None })
+            let dims = params
+                .get("dims")
+                .and_then(|v| {
+                    if let ParamValue::Shape(s) = v {
+                        Some(s.dims.clone())
+                    } else {
+                        None
+                    }
+                })
                 .unwrap_or_default();
             Ok(vec![dims])
         }
@@ -462,41 +464,89 @@ mod tests {
 
     struct MockReLU;
     impl BlockDef for MockReLU {
-        fn name(&self) -> &str { "ReLU" }
-        fn params(&self) -> &[ParamSpec] { &[] }
-        fn infer_shape(&self, inputs: &[Shape], _params: &HashMap<String, ParamValue>) -> Result<Vec<Shape>, String> {
+        fn name(&self) -> &str {
+            "ReLU"
+        }
+        fn params(&self) -> &[ParamSpec] {
+            &[]
+        }
+        fn infer_shape(
+            &self,
+            inputs: &[Shape],
+            _params: &HashMap<String, ParamValue>,
+        ) -> Result<Vec<Shape>, String> {
             Ok(inputs.to_vec())
         }
     }
 
     struct MockAdd;
     impl BlockDef for MockAdd {
-        fn name(&self) -> &str { "Add" }
-        fn params(&self) -> &[ParamSpec] { &[] }
-        fn infer_shape(&self, inputs: &[Shape], _params: &HashMap<String, ParamValue>) -> Result<Vec<Shape>, String> {
-            if inputs.is_empty() { return Err("Add requires inputs".to_string()); }
+        fn name(&self) -> &str {
+            "Add"
+        }
+        fn params(&self) -> &[ParamSpec] {
+            &[]
+        }
+        fn infer_shape(
+            &self,
+            inputs: &[Shape],
+            _params: &HashMap<String, ParamValue>,
+        ) -> Result<Vec<Shape>, String> {
+            if inputs.is_empty() {
+                return Err("Add requires inputs".to_string());
+            }
             Ok(vec![inputs[0].clone()])
         }
     }
 
     struct MockConv2d;
     impl BlockDef for MockConv2d {
-        fn name(&self) -> &str { "Conv2d" }
+        fn name(&self) -> &str {
+            "Conv2d"
+        }
         fn params(&self) -> &[ParamSpec] {
             static PARAMS: std::sync::LazyLock<Vec<ParamSpec>> = std::sync::LazyLock::new(|| {
                 vec![
-                    ParamSpec { name: "kernel".into(), param_type: ParamType::Number, required: true, default: None },
-                    ParamSpec { name: "out_channels".into(), param_type: ParamType::Number, required: true, default: None },
+                    ParamSpec {
+                        name: "kernel".into(),
+                        param_type: ParamType::Number,
+                        required: true,
+                        default: None,
+                    },
+                    ParamSpec {
+                        name: "out_channels".into(),
+                        param_type: ParamType::Number,
+                        required: true,
+                        default: None,
+                    },
                 ]
             });
             &PARAMS
         }
-        fn infer_shape(&self, _inputs: &[Shape], params: &HashMap<String, ParamValue>) -> Result<Vec<Shape>, String> {
-            let _kernel = params.get("kernel")
-                .and_then(|v| if let ParamValue::Number(n) = v { Some(n.value as usize) } else { None })
+        fn infer_shape(
+            &self,
+            _inputs: &[Shape],
+            params: &HashMap<String, ParamValue>,
+        ) -> Result<Vec<Shape>, String> {
+            let _kernel = params
+                .get("kernel")
+                .and_then(|v| {
+                    if let ParamValue::Number(n) = v {
+                        Some(n.value as usize)
+                    } else {
+                        None
+                    }
+                })
                 .ok_or_else(|| "Conv2d missing kernel".to_string())?;
-            let _out_ch = params.get("out_channels")
-                .and_then(|v| if let ParamValue::Number(n) = v { Some(n.value as usize) } else { None })
+            let _out_ch = params
+                .get("out_channels")
+                .and_then(|v| {
+                    if let ParamValue::Number(n) = v {
+                        Some(n.value as usize)
+                    } else {
+                        None
+                    }
+                })
                 .ok_or_else(|| "Conv2d missing out_channels".to_string())?;
             Ok(vec![vec![]])
         }
@@ -549,7 +599,11 @@ mod tests {
                 make_block("b", "ReLU"),
                 make_block("c", "ReLU"),
             ],
-            edges: vec![make_edge("a", "b"), make_edge("b", "c"), make_edge("c", "a")],
+            edges: vec![
+                make_edge("a", "b"),
+                make_edge("b", "c"),
+                make_edge("c", "a"),
+            ],
             groups: vec![],
         };
         let diags = check_cycles(&graph);
@@ -653,7 +707,10 @@ mod tests {
             groups: vec![],
         };
         let diags = check_shapes(&graph, &registry);
-        let shape_diags: Vec<_> = diags.iter().filter(|d| d.rule == "shape-mismatch").collect();
+        let shape_diags: Vec<_> = diags
+            .iter()
+            .filter(|d| d.rule == "shape-mismatch")
+            .collect();
         assert!(!shape_diags.is_empty(), "expected shape mismatch diags");
     }
 
@@ -672,7 +729,10 @@ mod tests {
             groups: vec![],
         };
         let diags = check_shapes(&graph, &registry);
-        let shape_diags: Vec<_> = diags.iter().filter(|d| d.rule == "shape-mismatch").collect();
+        let shape_diags: Vec<_> = diags
+            .iter()
+            .filter(|d| d.rule == "shape-mismatch")
+            .collect();
         assert_eq!(shape_diags.len(), 0);
     }
 
@@ -736,7 +796,10 @@ mod tests {
     fn test_undefined_tensor_refs_undefined() {
         // Block with list param containing bareword referencing undefined tensor
         let mut params = HashMap::new();
-        params.insert("sources".to_string(), p_list(vec![p_bareword("undefined_name")]));
+        params.insert(
+            "sources".to_string(),
+            p_list(vec![p_bareword("undefined_name")]),
+        );
         let graph = Graph {
             blocks: vec![make_block_with_params("b0", "Add", params)],
             edges: vec![],

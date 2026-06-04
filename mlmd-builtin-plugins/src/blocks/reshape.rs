@@ -99,7 +99,13 @@ fn pytorch_codegen(
         let dims: Vec<String> = s.dims.iter().map(|d| d.to_string()).collect();
         BlockCodegenResult {
             init: None,
-            forward: format!("{} = {}.reshape({}.size(0), {})", output0, input0, input0, dims.join(", ")),
+            forward: format!(
+                "{} = {}.reshape({}.size(0), {})",
+                output0,
+                input0,
+                input0,
+                dims.join(", ")
+            ),
         }
     } else {
         BlockCodegenResult {
@@ -120,7 +126,12 @@ fn keras_codegen(
         let dims: Vec<String> = s.dims.iter().map(|d| d.to_string()).collect();
         BlockCodegenResult {
             init: None,
-            forward: format!("{} = keras.layers.Reshape(({},))({})", output0, dims.join(", "), input0),
+            forward: format!(
+                "{} = keras.layers.Reshape(({},))({})",
+                output0,
+                dims.join(", "),
+                input0
+            ),
         }
     } else {
         BlockCodegenResult {
@@ -141,7 +152,10 @@ fn candle_codegen(
     let shape_str = if dims.is_empty() {
         "0".to_string()
     } else {
-        dims.iter().map(|d| d.to_string()).collect::<Vec<_>>().join(", ")
+        dims.iter()
+            .map(|d| d.to_string())
+            .collect::<Vec<_>>()
+            .join(", ")
     };
     BlockCodegenResult {
         init: None,
@@ -167,7 +181,14 @@ mod tests {
         let mut p = HashMap::new();
         p.insert(
             "shape".to_string(),
-            ParamValue::Shape(Box::new(ShapeVal::new(vec![1, 28, 28], SourceLoc { line: 0, col: 0, offset: 0 }))),
+            ParamValue::Shape(Box::new(ShapeVal::new(
+                vec![1, 28, 28],
+                SourceLoc {
+                    line: 0,
+                    col: 0,
+                    offset: 0,
+                },
+            ))),
         );
         let shapes = def.infer_shape(&[vec![784]], &p).unwrap();
         assert_eq!(shapes, vec![vec![1, 28, 28]]);

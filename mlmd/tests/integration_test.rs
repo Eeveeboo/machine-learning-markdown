@@ -51,7 +51,10 @@ fn test_lenet5_full_pipeline() {
         "Parse errors: {:?}",
         parse_result.errors
     );
-    assert!(!parse_result.nodes.is_empty(), "Parser should produce nodes");
+    assert!(
+        !parse_result.nodes.is_empty(),
+        "Parser should produce nodes"
+    );
 
     // 5. Build graph
     let graph = mlmd_core::parser::graph_builder::build_graph(&parse_result.nodes);
@@ -98,7 +101,13 @@ fn test_lenet5_full_pipeline() {
 /// Test that the tokenizer handles all example files without crashing.
 #[test]
 fn test_all_examples_tokenize() {
-    let examples = ["attention.mlmd", "inception.mlmd", "lenet.mlmd", "resnet-bottleneck.mlmd", "unet.mlmd"];
+    let examples = [
+        "attention.mlmd",
+        "inception.mlmd",
+        "lenet.mlmd",
+        "resnet-bottleneck.mlmd",
+        "unet.mlmd",
+    ];
 
     mlmd_builtin_plugins::register_all();
 
@@ -116,7 +125,13 @@ fn test_all_examples_tokenize() {
 /// Test that the parser can parse all example files without errors.
 #[test]
 fn test_all_examples_parse() {
-    let examples = ["attention.mlmd", "inception.mlmd", "lenet.mlmd", "resnet-bottleneck.mlmd", "unet.mlmd"];
+    let examples = [
+        "attention.mlmd",
+        "inception.mlmd",
+        "lenet.mlmd",
+        "resnet-bottleneck.mlmd",
+        "unet.mlmd",
+    ];
 
     mlmd_builtin_plugins::register_all();
 

@@ -171,7 +171,8 @@ pub fn infer_shapes(graph: &Graph, registry: &BlockRegistry) -> ShapeResult {
 
         match def {
             Some(block_def) => {
-                match block_def.infer_shape(&blocks[block_idx].input_shapes, &blocks[block_idx].params)
+                match block_def
+                    .infer_shape(&blocks[block_idx].input_shapes, &blocks[block_idx].params)
                 {
                     Ok(shapes) => {
                         output_shapes = shapes;
@@ -285,7 +286,11 @@ mod tests {
     // ------------------------------------------------------------------
     // Helper: make a block with params
     // ------------------------------------------------------------------
-    fn make_block_with_params(id: &str, block_type: &str, params: HashMap<String, ParamValue>) -> Block {
+    fn make_block_with_params(
+        id: &str,
+        block_type: &str,
+        params: HashMap<String, ParamValue>,
+    ) -> Block {
         Block {
             id: id.to_string(),
             block_type: block_type.to_string(),
@@ -344,7 +349,11 @@ mod tests {
             Ok(vec![dims])
         }
 
-        fn param_count(&self, _inputs: &[Shape], _params: &HashMap<String, ParamValue>) -> Option<usize> {
+        fn param_count(
+            &self,
+            _inputs: &[Shape],
+            _params: &HashMap<String, ParamValue>,
+        ) -> Option<usize> {
             Some(0)
         }
     }
@@ -783,7 +792,12 @@ mod tests {
         // Check edge shapes
         let edges = &result.graph.edges;
         for e in edges {
-            assert!(e.shape.is_some(), "edge {:?}->{:?} has no shape", e.from, e.to);
+            assert!(
+                e.shape.is_some(),
+                "edge {:?}->{:?} has no shape",
+                e.from,
+                e.to
+            );
         }
     }
 
@@ -826,12 +840,7 @@ mod tests {
 
         assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
-        let lstm_b = result
-            .graph
-            .blocks
-            .iter()
-            .find(|b| b.id == "lstm")
-            .unwrap();
+        let lstm_b = result.graph.blocks.iter().find(|b| b.id == "lstm").unwrap();
 
         // LSTM outputs [batch, seq, hidden] = [4, 10, 64] and [batch, hidden] = [4, 64]
         assert_eq!(lstm_b.output_shapes.len(), 2);
@@ -1010,9 +1019,7 @@ mod tests {
         let output = make_block("output", "Output");
 
         let graph = Graph {
-            blocks: vec![
-                input, conv1, relu1, pool1, conv2, relu2, pool2, output,
-            ],
+            blocks: vec![input, conv1, relu1, pool1, conv2, relu2, pool2, output],
             edges: vec![
                 make_edge("input", "conv1"),
                 make_edge("conv1", "relu1"),
@@ -1149,7 +1156,10 @@ mod tests {
             .iter()
             .find(|b| b.id == "merge")
             .unwrap();
-        assert_eq!(merge_b.input_shapes, vec![vec![1, 3, 32, 32], vec![1, 3, 32, 32]]);
+        assert_eq!(
+            merge_b.input_shapes,
+            vec![vec![1, 3, 32, 32], vec![1, 3, 32, 32]]
+        );
         assert_eq!(merge_b.output_shapes, vec![vec![1, 3, 32, 32]]);
     }
 
@@ -1261,7 +1271,12 @@ mod tests {
         let result = infer_shapes(&graph, &registry);
 
         // Known blocks should have show_depth = Some(value)
-        let input_b = result.graph.blocks.iter().find(|b| b.id == "input").unwrap();
+        let input_b = result
+            .graph
+            .blocks
+            .iter()
+            .find(|b| b.id == "input")
+            .unwrap();
         assert_eq!(input_b.show_depth, Some(true));
         assert_eq!(input_b.param_count, Some(0));
 

@@ -79,7 +79,10 @@ fn pytorch_codegen(
     output_vars: &[String],
 ) -> BlockCodegenResult {
     let axis = get_num(&block.params, "axis").unwrap_or(0.0) as isize;
-    let idx = input_vars.get(1).cloned().unwrap_or_else(|| "index".to_string());
+    let idx = input_vars
+        .get(1)
+        .cloned()
+        .unwrap_or_else(|| "index".to_string());
     BlockCodegenResult {
         init: None,
         forward: format!(
@@ -98,7 +101,10 @@ fn keras_codegen(
     output_vars: &[String],
 ) -> BlockCodegenResult {
     let axis = get_num(&block.params, "axis").unwrap_or(0.0) as isize;
-    let idx = input_vars.get(1).cloned().unwrap_or_else(|| "indices".to_string());
+    let idx = input_vars
+        .get(1)
+        .cloned()
+        .unwrap_or_else(|| "indices".to_string());
     BlockCodegenResult {
         init: None,
         forward: format!(
@@ -117,7 +123,10 @@ fn candle_codegen(
     output_vars: &[String],
 ) -> BlockCodegenResult {
     let axis = get_num(&block.params, "axis").unwrap_or(0.0) as isize;
-    let idx = input_vars.get(1).cloned().unwrap_or_else(|| "index".to_string());
+    let idx = input_vars
+        .get(1)
+        .cloned()
+        .unwrap_or_else(|| "index".to_string());
     BlockCodegenResult {
         init: None,
         forward: format!(

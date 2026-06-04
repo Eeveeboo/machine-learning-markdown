@@ -139,16 +139,9 @@ impl SvgBuilder {
     }
 
     /// Add a `<path>` element.
-    pub fn path(
-        &mut self,
-        d: &str,
-        opts: Option<HashMap<String, String>>,
-    ) -> &mut Self {
-        self.elements.push(format!(
-            r#"<path d="{}"{} />"#,
-            d,
-            attrs(opts.as_ref())
-        ));
+    pub fn path(&mut self, d: &str, opts: Option<HashMap<String, String>>) -> &mut Self {
+        self.elements
+            .push(format!(r#"<path d="{}"{} />"#, d, attrs(opts.as_ref())));
         self
     }
 
@@ -165,9 +158,15 @@ impl SvgBuilder {
             Some(m) => m,
             None => HashMap::new(),
         };
-        merged.entry("stroke".to_string()).or_insert_with(|| "#333".to_string());
-        merged.entry("stroke-width".to_string()).or_insert_with(|| "2".to_string());
-        merged.entry("fill".to_string()).or_insert_with(|| "none".to_string());
+        merged
+            .entry("stroke".to_string())
+            .or_insert_with(|| "#333".to_string());
+        merged
+            .entry("stroke-width".to_string())
+            .or_insert_with(|| "2".to_string());
+        merged
+            .entry("fill".to_string())
+            .or_insert_with(|| "none".to_string());
         merged
             .entry("marker-end".to_string())
             .or_insert_with(|| "url(#arrowhead)".to_string());
@@ -205,11 +204,8 @@ impl SvgBuilder {
             cx - hw,
             cy
         );
-        self.elements.push(format!(
-            r#"<path d="{}"{} />"#,
-            d,
-            attrs(opts.as_ref())
-        ));
+        self.elements
+            .push(format!(r#"<path d="{}"{} />"#, d, attrs(opts.as_ref())));
         self
     }
 
@@ -279,12 +275,7 @@ impl SvgBuilder {
 {}
 {}
 </svg>"#,
-            self.width,
-            self.height,
-            self.width,
-            self.height,
-            ARROWHEAD_MARKER,
-            inner
+            self.width, self.height, self.width, self.height, ARROWHEAD_MARKER, inner
         )
     }
 }

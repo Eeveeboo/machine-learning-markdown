@@ -45,14 +45,15 @@ pub fn run(args: GenerateArgs) -> anyhow::Result<()> {
     let shape_result = infer_shapes(&graph, &registry);
 
     for err in &shape_result.errors {
-        eprintln!(
-            "Shape error in block '{}': {}",
-            err.block_id, err.message
-        );
+        eprintln!("Shape error in block '{}': {}", err.block_id, err.message);
     }
 
-    let target = get_target(&args.target)
-        .ok_or_else(|| anyhow::anyhow!("Unknown target '{}'. Available: pytorch, keras, candle", args.target))?;
+    let target = get_target(&args.target).ok_or_else(|| {
+        anyhow::anyhow!(
+            "Unknown target '{}'. Available: pytorch, keras, candle",
+            args.target
+        )
+    })?;
 
     let files = target.generate(&shape_result.graph);
 

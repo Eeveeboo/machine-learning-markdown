@@ -49,11 +49,7 @@ impl BlockDef for LinearBlockDef {
         Ok(vec![result])
     }
 
-    fn param_count(
-        &self,
-        inputs: &[Shape],
-        params: &HashMap<String, ParamValue>,
-    ) -> Option<usize> {
+    fn param_count(&self, inputs: &[Shape], params: &HashMap<String, ParamValue>) -> Option<usize> {
         let in_f = if !inputs.is_empty() && !inputs[0].is_empty() {
             inputs[0][inputs[0].len() - 1]
         } else {
@@ -195,9 +191,7 @@ mod tests {
                 },
             ))),
         );
-        let shapes = def
-            .infer_shape(&[vec![3, 64]], &p)
-            .unwrap();
+        let shapes = def.infer_shape(&[vec![3, 64]], &p).unwrap();
         assert_eq!(shapes, vec![vec![3, 10]]);
 
         assert_eq!(def.param_count(&[vec![3, 64]], &p), Some(64 * 10 + 10));

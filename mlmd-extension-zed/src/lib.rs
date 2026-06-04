@@ -19,12 +19,13 @@ impl zed::Extension for MlmdExtension {
 
         // For dev extensions, find mlmd via PATH (npm global install).
         // Fall back to the worktree root (extension == project).
-        let mlmd_bin = worktree
-            .which("mlmd")
-            .unwrap_or_else(|| {
-                let root = worktree.root_path();
-                Path::new(&root).join("dist/bin/mlmd.js").to_string_lossy().to_string()
-            });
+        let mlmd_bin = worktree.which("mlmd").unwrap_or_else(|| {
+            let root = worktree.root_path();
+            Path::new(&root)
+                .join("dist/bin/mlmd.js")
+                .to_string_lossy()
+                .to_string()
+        });
 
         Ok(zed::Command {
             command: node,

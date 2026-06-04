@@ -54,11 +54,7 @@ impl BlockDef for RNNBlockDef {
         Ok(vec![vec![seq, h]])
     }
 
-    fn param_count(
-        &self,
-        inputs: &[Shape],
-        params: &HashMap<String, ParamValue>,
-    ) -> Option<usize> {
+    fn param_count(&self, inputs: &[Shape], params: &HashMap<String, ParamValue>) -> Option<usize> {
         let in_size = if !inputs.is_empty() && !inputs[0].is_empty() {
             inputs[0][inputs[0].len() - 1]
         } else {
@@ -67,7 +63,11 @@ impl BlockDef for RNNBlockDef {
         let h = get_num(params, "hidden_size").ok_or(0.0).unwrap_or(0.0) as usize;
         let l = get_num(params, "num_layers").unwrap_or(1.0) as usize;
         let first_layer = 1 * (in_size * h + h * h + 2 * h);
-        let extra_layer = if l > 1 { (l - 1) * 1 * (h * h + h * h + 2 * h) } else { 0 };
+        let extra_layer = if l > 1 {
+            (l - 1) * 1 * (h * h + h * h + 2 * h)
+        } else {
+            0
+        };
         Some(first_layer + extra_layer)
     }
 
@@ -186,7 +186,17 @@ mod tests {
         assert_eq!(def.name(), "RNN");
 
         let mut p = HashMap::new();
-        p.insert("hidden_size".to_string(), ParamValue::Number(Box::new(NumberVal::new(128.0, SourceLoc { line: 0, col: 0, offset: 0 }))));
+        p.insert(
+            "hidden_size".to_string(),
+            ParamValue::Number(Box::new(NumberVal::new(
+                128.0,
+                SourceLoc {
+                    line: 0,
+                    col: 0,
+                    offset: 0,
+                },
+            ))),
+        );
         let shapes = def.infer_shape(&[vec![10, 64]], &p).unwrap();
         assert_eq!(shapes, vec![vec![10, 128]]);
 

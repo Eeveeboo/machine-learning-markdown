@@ -70,7 +70,10 @@ fn pytorch_codegen(
 ) -> BlockCodegenResult {
     BlockCodegenResult {
         init: None,
-        forward: format!("return {}", input_vars.first().map(|s| s.as_str()).unwrap_or("?")),
+        forward: format!(
+            "return {}",
+            input_vars.first().map(|s| s.as_str()).unwrap_or("?")
+        ),
     }
 }
 
@@ -81,7 +84,10 @@ fn keras_codegen(
 ) -> BlockCodegenResult {
     BlockCodegenResult {
         init: None,
-        forward: format!("return {}", input_vars.first().map(|s| s.as_str()).unwrap_or("?")),
+        forward: format!(
+            "return {}",
+            input_vars.first().map(|s| s.as_str()).unwrap_or("?")
+        ),
     }
 }
 
@@ -92,7 +98,10 @@ fn candle_codegen(
 ) -> BlockCodegenResult {
     BlockCodegenResult {
         init: None,
-        forward: format!("Ok({})", input_vars.first().map(|s| s.as_str()).unwrap_or("?")),
+        forward: format!(
+            "Ok({})",
+            input_vars.first().map(|s| s.as_str()).unwrap_or("?")
+        ),
     }
 }
 
