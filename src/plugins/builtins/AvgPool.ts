@@ -55,7 +55,7 @@ export const AvgPool: BlockPlugin = {
     candle(_block, inputVars, outputVars) {
       // Candle does not have a built-in avg_pool2d; emit a comment placeholder
       return {
-        forward: `${outputVars[0]} = /* AvgPool2d not directly supported in candle_nn::ops */ ${inputVars[0]}.clone()?`,
+        forward: `${outputVars[0]} = /* AvgPool2d not directly supported in candle_nn::ops */ ${inputVars[0]}.clone()?;`,
       };
     },
   },

@@ -22,7 +22,7 @@ const Output: BlockPlugin = {
     },
 
     candle(_block: Block, inputVars: string[], _outputVars: string[]): BlockCodegenResult {
-      return { forward: `Ok(${inputVars[0]})` };
+      return { forward: `Ok(${inputVars[0]});` };
     },
   },
 };

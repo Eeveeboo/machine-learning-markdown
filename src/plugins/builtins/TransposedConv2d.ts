@@ -72,7 +72,7 @@ export const TransposedConv2d: BlockPlugin = {
     candle(block, inputVars, outputVars) {
       // candle does not have ConvTranspose2d in standard candle_nn; emit placeholder
       return {
-        forward: `${outputVars[0]} = unimplemented!("TransposedConv2d not supported in candle")  // ${inputVars[0]}`,
+        forward: `${outputVars[0]} = unimplemented!("TransposedConv2d not supported in candle");  // ${inputVars[0]}`,
       };
     },
   },

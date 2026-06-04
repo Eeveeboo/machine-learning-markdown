@@ -60,7 +60,7 @@ export const Embedding: BlockPlugin = {
           field: `${block.id}: candle_nn::Embedding`,
           body: `let ${block.id} = candle_nn::embedding(${vocab}, ${dim}, vb.pp("${block.id}"))?;`,
         },
-        forward: `${outputVars[0]} = self.${block.id}.forward(&${inputVars[0]})?`,
+        forward: `${outputVars[0]} = self.${block.id}.forward(&${inputVars[0]})?;`,
       };
     },
   },

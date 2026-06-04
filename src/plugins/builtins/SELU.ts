@@ -22,7 +22,7 @@ const SELU: BlockPlugin = {
       };
     },
     candle(_block, inputVars, outputVars) {
-      return { forward: `${outputVars[0]} = ${inputVars[0]}.selu()?` };
+      return { forward: `${outputVars[0]} = ${inputVars[0]}.selu()?;` };
     },
   },
 };

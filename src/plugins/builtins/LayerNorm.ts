@@ -38,7 +38,7 @@ export const LayerNorm: BlockPlugin = {
           field: `${block.id}: candle_nn::LayerNorm`,
           body: `let ${block.id} = candle_nn::layer_norm(${features}, 1e-5, vb.pp("${block.id}"))?;`,
         },
-        forward: `${outputVars[0]} = self.${block.id}.forward(&${inputVars[0]})?`,
+        forward: `${outputVars[0]} = self.${block.id}.forward(&${inputVars[0]})?;`,
       };
     },
   },

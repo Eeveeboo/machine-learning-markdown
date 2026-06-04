@@ -24,7 +24,7 @@ const Repeat: BlockPlugin = {
     candle(block, inputVars, outputVars) {
       const tv = block.params["times"];
       const times = tv && tv.kind === "number" ? tv.value : 1;
-      return { forward: `${outputVars[0]} = ${inputVars[0]}.repeat(&[${times}])?` };
+      return { forward: `${outputVars[0]} = ${inputVars[0]}.repeat(&[${times}])?;` };
     },
   },
 };

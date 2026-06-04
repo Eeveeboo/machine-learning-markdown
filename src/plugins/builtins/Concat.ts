@@ -30,7 +30,7 @@ const Concat: BlockPlugin = {
     },
     candle(_block, inputVars, outputVars) {
       const tensors = inputVars.map((v) => `&${v}`).join(", ");
-      return { forward: `${outputVars[0]} = Tensor::cat(&[${tensors}], 1)?` };
+      return { forward: `${outputVars[0]} = Tensor::cat(&[${tensors}], 1)?;` };
     },
   },
 };

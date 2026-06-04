@@ -22,7 +22,7 @@ const ReLU: BlockPlugin = {
       };
     },
     candle(_block, inputVars, outputVars) {
-      return { forward: `${outputVars[0]} = ${inputVars[0]}.relu()?` };
+      return { forward: `${outputVars[0]} = ${inputVars[0]}.relu()?;` };
     },
   },
 };

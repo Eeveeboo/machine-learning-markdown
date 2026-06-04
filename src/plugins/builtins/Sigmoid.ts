@@ -22,7 +22,7 @@ const Sigmoid: BlockPlugin = {
       };
     },
     candle(_block, inputVars, outputVars) {
-      return { forward: `${outputVars[0]} = ${inputVars[0]}.sigmoid()?` };
+      return { forward: `${outputVars[0]} = ${inputVars[0]}.sigmoid()?;` };
     },
   },
 };

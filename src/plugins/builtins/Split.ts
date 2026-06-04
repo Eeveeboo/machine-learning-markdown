@@ -36,7 +36,7 @@ const Split: BlockPlugin = {
       const N = nv && nv.kind === "number" ? nv.value : 2;
       const av = block.params["axis"];
       const axis = av && av.kind === "number" ? av.value : 0;
-      return { forward: `${outputVars[0]} = ${inputVars[0]}.chunk(${N}, ${axis})?` };
+      return { forward: `${outputVars[0]} = ${inputVars[0]}.chunk(${N}, ${axis})?;` };
     },
   },
 };

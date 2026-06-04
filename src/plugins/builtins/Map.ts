@@ -16,7 +16,7 @@ const Map: BlockPlugin = {
       return { forward: `${outputVars[0]} = keras.layers.Lambda(lambda t: t)(${inputVars[0]})  # Map` };
     },
     candle(_block, inputVars, outputVars) {
-      return { forward: `${outputVars[0]} = ${inputVars[0]}.clone()  // Map (identity; apply custom fn manually)` };
+      return { forward: `${outputVars[0]} = ${inputVars[0]}.clone();  // Map (identity; apply custom fn manually)` };
     },
   },
 };

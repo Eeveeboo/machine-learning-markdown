@@ -29,7 +29,7 @@ const LeakyReLU: BlockPlugin = {
     candle(block, inputVars, outputVars) {
       const slope = getNum(block.params, "negative_slope") ?? 0.01;
       return {
-        forward: `${outputVars[0]} = ${inputVars[0]}.leaky_relu(${slope})?`,
+        forward: `${outputVars[0]} = ${inputVars[0]}.leaky_relu(${slope})?;`,
       };
     },
   },

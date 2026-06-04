@@ -44,7 +44,7 @@ export const GroupNorm: BlockPlugin = {
           field: `${block.id}: candle_nn::GroupNorm`,
           body: `let ${block.id} = candle_nn::group_norm(${groups}, ${channels}, 1e-5, vb.pp("${block.id}"))?;`,
         },
-        forward: `${outputVars[0]} = self.${block.id}.forward(&${inputVars[0]})?`,
+        forward: `${outputVars[0]} = self.${block.id}.forward(&${inputVars[0]})?;`,
       };
     },
   },

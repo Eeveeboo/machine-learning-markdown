@@ -22,7 +22,7 @@ const SiLU: BlockPlugin = {
       };
     },
     candle(_block, inputVars, outputVars) {
-      return { forward: `${outputVars[0]} = ${inputVars[0]}.silu()?` };
+      return { forward: `${outputVars[0]} = ${inputVars[0]}.silu()?;` };
     },
   },
 };

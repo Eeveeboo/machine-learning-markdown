@@ -22,7 +22,7 @@ const Tanh: BlockPlugin = {
       };
     },
     candle(_block, inputVars, outputVars) {
-      return { forward: `${outputVars[0]} = ${inputVars[0]}.tanh()?` };
+      return { forward: `${outputVars[0]} = ${inputVars[0]}.tanh()?;` };
     },
   },
 };

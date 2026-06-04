@@ -17,7 +17,7 @@ const Add: BlockPlugin = {
       return { forward: `${outputVars[0]} = keras.layers.Add()([${inputVars.join(", ")}])` };
     },
     candle(_block, inputVars, outputVars) {
-      return { forward: `${outputVars[0]} = (&${inputVars[0]} + &${inputVars[1]})?` };
+      return { forward: `${outputVars[0]} = (&${inputVars[0]} + &${inputVars[1]})?;` };
     },
   },
 };

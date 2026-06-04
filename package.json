@@ -20,10 +20,12 @@
   ],
   "scripts": {
     "build": "tsup",
-    "test": "vitest run",
+    "test": "vitest run && npm run test:rust",
     "typecheck": "tsc --noEmit",
     "dev": "tsup --watch",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "test:rust": "cargo test --manifest-path tests/e2e/rust/Cargo.toml",
+    "test:rust:update": "npm run build && npm run generate-examples && npm run test:rust"
   },
   "dependencies": {
     "commander": "^12.0.0"

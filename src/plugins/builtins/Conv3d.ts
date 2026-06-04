@@ -72,7 +72,7 @@ export const Conv3d: BlockPlugin = {
     candle(block, inputVars, outputVars) {
       // candle does not have Conv3d; emit a placeholder
       return {
-        forward: `${outputVars[0]} = unimplemented!("Conv3d not supported in candle")  // ${inputVars[0]}`,
+        forward: `${outputVars[0]} = unimplemented!("Conv3d not supported in candle");  // ${inputVars[0]}`,
       };
     },
   },

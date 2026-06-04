@@ -50,7 +50,7 @@ const Pad: BlockPlugin = {
           forward: `${outputVars[0]} = ${inputVars[0]}.pad_with_zeros(2, ${p[0]}, ${p[1]})?.pad_with_zeros(3, ${p[2]}, ${p[3]})?`,
         };
       }
-      return { forward: `${outputVars[0]} = ${inputVars[0]}.pad_with_zeros(2, 0, 0)?` };
+      return { forward: `${outputVars[0]} = ${inputVars[0]}.pad_with_zeros(2, 0, 0)?;` };
     },
   },
 };

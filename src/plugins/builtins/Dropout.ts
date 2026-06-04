@@ -41,7 +41,7 @@ const Dropout: BlockPlugin = {
           field: `${block.id}: candle_nn::Dropout`,
           body: `let ${block.id} = candle_nn::Dropout::new(${p});`,
         },
-        forward: `${outputVars[0]} = self.${block.id}.forward(&${inputVars[0]}, true)?`,
+        forward: `${outputVars[0]} = self.${block.id}.forward(&${inputVars[0]}, true)?;`,
       };
     },
   },

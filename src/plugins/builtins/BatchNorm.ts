@@ -46,16 +46,20 @@ export const BatchNorm: BlockPlugin = {
 
     candle(block, inputVars, outputVars) {
       const inputShape = block.inputShapes[0] ?? [];
+      // MLMD shapes may include batch dim (4D: [N,C,H,W]) or not (3D: [C,H,W]).
+      // Channels/features come from the second dim when batch is present, first dim otherwise.
       const features =
         inputShape.length >= 4
-          ? (inputShape[inputShape.length - 3] ?? inputShape[1] ?? 0)
-          : (inputShape[inputShape.length - 1] ?? 0);
+          ? (inputShape[1] ?? 0)  // [N, C, H, W] with batch
+          : inputShape.length >= 3
+            ? (inputShape[0] ?? 0)  // [C, H, W] without batch
+            : (inputShape[inputShape.length - 1] ?? 0);  // [F] or [T, F]
       return {
         init: {
           field: `${block.id}: candle_nn::BatchNorm`,
           body: `let ${block.id} = candle_nn::batch_norm(${features}, 1e-5, vb.pp("${block.id}"))?;`,
         },
-        forward: `${outputVars[0]} = self.${block.id}.forward(&${inputVars[0]})?`,
+        forward: `${outputVars[0]} = self.${block.id}.forward_t(&${inputVars[0]}, false)?;`,
       };
     },
   },

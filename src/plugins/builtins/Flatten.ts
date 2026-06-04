@@ -23,7 +23,7 @@ const Flatten: BlockPlugin = {
       };
     },
     candle(_block, inputVars, outputVars) {
-      return { forward: `${outputVars[0]} = ${inputVars[0]}.flatten_from(1)?` };
+      return { forward: `${outputVars[0]} = ${inputVars[0]}.flatten_from(1)?;` };
     },
   },
 };

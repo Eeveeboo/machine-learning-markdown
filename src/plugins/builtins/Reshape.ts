@@ -43,7 +43,7 @@ const Reshape: BlockPlugin = {
     candle(block, inputVars, outputVars) {
       const dims = getNumList(block.params, "shape");
       const shape = dims.length ? dims.join(", ") : "0";
-      return { forward: `${outputVars[0]} = ${inputVars[0]}.reshape(&[${shape}])?` };
+      return { forward: `${outputVars[0]} = ${inputVars[0]}.reshape(&[${shape}])?;` };
     },
   },
 };

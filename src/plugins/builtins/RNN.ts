@@ -61,7 +61,7 @@ export const RNN: BlockPlugin = {
           field: `${block.id}: candle_nn::Linear`,
           body: `let ${block.id} = /* RNN not natively supported in candle_nn */ candle_nn::linear(${inputSize + hidden}, ${hidden}, vb.pp("${block.id}"))?;`,
         },
-        forward: `${outputVars[0]} = self.${block.id}.forward(&${inputVars[0]})?`,
+        forward: `${outputVars[0]} = self.${block.id}.forward(&${inputVars[0]})?;`,
       };
     },
   },

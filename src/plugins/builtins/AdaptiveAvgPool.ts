@@ -62,7 +62,7 @@ export const AdaptiveAvgPool: BlockPlugin = {
     candle(_block, inputVars, outputVars) {
       // Candle doesn't have adaptive_avg_pool2d; use mean over spatial dims
       return {
-        forward: `${outputVars[0]} = ${inputVars[0]}.mean_keepdim(candle_core::D::Minus1)?.mean_keepdim(candle_core::D::Minus2)?`,
+        forward: `${outputVars[0]} = ${inputVars[0]}.mean_keepdim(candle_core::D::Minus1)?.mean_keepdim(candle_core::D::Minus2)?;`,
       };
     },
   },

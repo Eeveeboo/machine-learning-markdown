@@ -27,7 +27,7 @@ const Gather: BlockPlugin = {
       const av = block.params["axis"];
       const axis = av && av.kind === "number" ? av.value : 0;
       const idx = inputVars[1] ?? "index";
-      return { forward: `${outputVars[0]} = ${inputVars[0]}.gather(&${idx}, ${axis})?` };
+      return { forward: `${outputVars[0]} = ${inputVars[0]}.gather(&${idx}, ${axis})?;` };
     },
   },
 };

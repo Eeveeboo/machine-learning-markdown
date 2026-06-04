@@ -29,7 +29,7 @@ const ELU: BlockPlugin = {
     candle(block, inputVars, outputVars) {
       const alpha = getNum(block.params, "alpha") ?? 1.0;
       return {
-        forward: `${outputVars[0]} = ${inputVars[0]}.elu(${alpha})?`,
+        forward: `${outputVars[0]} = ${inputVars[0]}.elu(${alpha})?;`,
       };
     },
   },

@@ -22,7 +22,7 @@ const GELU: BlockPlugin = {
       };
     },
     candle(_block, inputVars, outputVars) {
-      return { forward: `${outputVars[0]} = ${inputVars[0]}.gelu()?` };
+      return { forward: `${outputVars[0]} = ${inputVars[0]}.gelu()?;` };
     },
   },
 };

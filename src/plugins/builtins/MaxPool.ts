@@ -60,9 +60,19 @@ export const MaxPool: BlockPlugin = {
       const stride =
         (block.params["stride"]?.kind === "number" ? block.params["stride"].value : undefined) ??
         kernel;
+      const padding =
+        (block.params["padding"]?.kind === "number" ? block.params["padding"].value : undefined) ??
+        (block.params["pad"]?.kind === "number" ? block.params["pad"].value : undefined) ??
+        0;
+      // Candle's max_pool2d doesn't support padding; pad the input manually via pad_with_zeros
+      const padPrefix = padding > 0
+        ? `${inputVars[0]}.pad_with_zeros(2, ${padding}, ${padding})?.pad_with_zeros(3, ${padding}, ${padding})?`
+        : inputVars[0];
+      const method = stride !== kernel ? "max_pool2d_with_stride" : "max_pool2d";
+      const args = stride !== kernel ? `${kernel}, ${stride}` : `${kernel}`;
       return {
         init: null,
-        forward: `${outputVars[0]} = candle_nn::ops::max_pool2d(&${inputVars[0]}, ${kernel}, ${stride})?`,
+        forward: `${outputVars[0]} = ${padPrefix}.${method}(${args})?;`,
       };
     },
   },

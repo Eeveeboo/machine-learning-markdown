@@ -28,7 +28,7 @@ const PReLU: BlockPlugin = {
     candle(_block, inputVars, outputVars) {
       // candle-core does not provide a built-in PReLU; emit a comment placeholder
       return {
-        forward: `${outputVars[0]} = ${inputVars[0]}.relu()?  /* PReLU: learnable slopes not supported in candle codegen */`,
+        forward: `${outputVars[0]} = ${inputVars[0]}.relu()?;  /* PReLU: learnable slopes not supported in candle codegen */`,
       };
     },
   },

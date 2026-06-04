@@ -30,7 +30,7 @@ const Softmax: BlockPlugin = {
       const dim = getNum(block.params, "dim") ?? -1;
       // candle uses softmax with explicit dim; -1 maps to last dim
       return {
-        forward: `${outputVars[0]} = candle_nn::ops::softmax(&${inputVars[0]}, candle_core::D::Minus${dim === -1 ? 1 : Math.abs(dim)})?`,
+        forward: `${outputVars[0]} = candle_nn::ops::softmax(&${inputVars[0]}, candle_core::D::Minus${dim === -1 ? 1 : Math.abs(dim)})?;`,
       };
     },
   },
